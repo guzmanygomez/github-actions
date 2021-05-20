@@ -1,13 +1,20 @@
 name: "Set up AWS CodeArtifact"
 description: "Configure AWS and Set up Code Artifact in NPM"
+inputs:
+  AWS_CODEARTIFACT_KEY:
+    required: true
+  AWS_CODEARTIFACT_SECRET:
+    required: true
+  AWS_CODEARTIFACT_REGION:
+    required: true
 runs:
   using: "composite"
   steps:
     - name: Set up AWS CodeArtifact
       env:
-        AWS_CODEARTIFACT_KEY: ${{ secrets.AWS_CODEARTIFACT_KEY }}
-        AWS_CODEARTIFACT_SECRET: ${{ secrets.AWS_CODEARTIFACT_SECRET }}
-        AWS_CODEARTIFACT_REGION: ${{ secrets.AWS_CODEARTIFACT_REGION }}
+        AWS_CODEARTIFACT_KEY: ${{ input.AWS_CODEARTIFACT_KEY }}
+        AWS_CODEARTIFACT_SECRET: ${{ input.AWS_CODEARTIFACT_SECRET }}
+        AWS_CODEARTIFACT_REGION: ${{ input.AWS_CODEARTIFACT_REGION }}
 
       run: |
         aws configure set aws_access_key_id $AWS_CODEARTIFACT_KEY --profile default
