@@ -1,0 +1,11 @@
+name: "Setup MySQL"
+description: ""
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        sudo /etc/init.d/mysql start
+        mysql -u root --password=root -e "CREATE USER 'gyg'@'localhost' IDENTIFIED BY 'gyg';"
+        mysql -u root --password=root -e "GRANT ALL PRIVILEGES ON * . * TO 'gyg'@'localhost';"
+        mysql -u root --password=root -e "FLUSH PRIVILEGES;"
+      shell: bash
