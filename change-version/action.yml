@@ -1,0 +1,12 @@
+name: "Update Changelog"
+description: "Replaces the ## Latest lint in the CHANGELOG.md file with ## ${VERSION}"
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        VERSION=`node -pe "require('./package.json').version"`
+        echo "::set-output name=version::$(echo $VERSION)"
+        sed -i "s/### Latest/### ${VERSION}/g"  CHANGELOG.md
+        git add .
+        git commit -m "Updated CHANGELOG ${VERSION}"
+      shell: bash
