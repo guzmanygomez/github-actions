@@ -1,0 +1,13 @@
+name: "Optional Commit and Push"
+description: ""
+inputs:
+  message:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        git add .
+        git commit -m "${{ inputs.message }}" || true
+        git push
+      shell: bash
