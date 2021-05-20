@@ -3,7 +3,7 @@ description: "Increases the patch number of the package.json"
 runs:
   using: "composite"
   steps:
-    run: |
-      git config --global user.email "github-action@gyg.com.au"
-      git config --global user.name "Github Action"
-    shell: bash
+    - run: |
+        git config --global user.email "github-action@gyg.com.au"
+        git config --global user.name "Github Action"
+      shell: bash
