@@ -9,3 +9,4 @@ runs:
         echo "[Github Action] Updated version: ${VERSION}"
         yarn publish --non-interactive
         git push
+      shell: bash

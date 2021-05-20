@@ -14,3 +14,4 @@ runs:
         aws configure set aws_secret_access_key $AWS_CODEARTIFACT_SECRET --profile default
         aws configure set region $AWS_CODEARTIFACT_REGION --profile default
         aws codeartifact login --tool npm --repository bhyve --domain gyg-internal-npm-repo
+      shell: bash
