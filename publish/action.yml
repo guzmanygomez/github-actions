@@ -1,0 +1,11 @@
+name: "Publish Package"
+description: "Publish a package and push the generated commit"
+runs:
+  using: "composite"
+  steps:
+    - name: Patch Version
+      run: |
+        VERSION=`node -pe "require('./package.json').version"`
+        echo "[Github Action] Updated version: ${VERSION}"
+        yarn publish --non-interactive
+        git push
