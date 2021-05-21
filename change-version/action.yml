@@ -8,5 +8,5 @@ runs:
         echo "::set-output name=version::$(echo $VERSION)"
         sed -i "s/### Latest/### ${VERSION}/g"  CHANGELOG.md
         git add .
-        git commit -m "Updated CHANGELOG ${VERSION}" || (echo "❌ Error: Missing '### Latest' in CHANGELOG" && exit 1)
+        git commit -m "Updated CHANGELOG ${VERSION}" || (echo "❌ Error: Missing '### Latest' in CHANGELOG" && exit 1) # || true
       shell: bash
