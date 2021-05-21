@@ -1,18 +1,8 @@
 name: "Set up AWS CodeArtifact"
-description: "Configure AWS and Set up Code Artifact in NPM"
-inputs:
-  AWS_CODEARTIFACT_KEY:
-    required: true
-  AWS_CODEARTIFACT_SECRET:
-    required: true
-  AWS_CODEARTIFACT_REGION:
-    required: true
+description: "Set up Code Artifact in NPM"
 runs:
   using: "composite"
   steps:
     - run: |
-        aws configure set aws_access_key_id ${{ inputs.AWS_CODEARTIFACT_KEY }} --profile default
-        aws configure set aws_secret_access_key ${{ inputs.AWS_CODEARTIFACT_SECRET }} --profile default
-        aws configure set region ${{ inputs.AWS_CODEARTIFACT_REGION }} --profile default
         aws codeartifact login --tool npm --repository bhyve --domain gyg-internal-npm-repo
       shell: bash
