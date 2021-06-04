@@ -7,6 +7,6 @@ runs:
       run: |
         VERSION=`node -pe "require('./package.json').version"`
         echo "[Github Action] Updated version: ${VERSION}"
-        yarn publish --non-interactive --tag ${VERSION}
+        yarn publish --non-interactive
         git push
       shell: bash
