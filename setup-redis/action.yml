@@ -10,8 +10,8 @@ runs:
       echo ::set-output name=host::localhost
       echo ::set-output name=port::6379
     shell: bash
-  outputs:
-    host:
-      description: Host the Redis server is running on
-    port:
-      description: Port the Redis server is running on
+outputs:
+  host:
+    description: Host the Redis server is running on
+  port:
+    description: Port the Redis server is running on
