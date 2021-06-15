@@ -3,15 +3,15 @@ description: Install Redis and export the server's host and port
 runs:
   using: composite
   steps:
-    run: |
-      sudo add-apt-repository ppa:redislabs/redis
-      sudo apt-get update
-      sudo apt-get install redis-server -y
-      echo ::set-output name=host::localhost
-      echo ::set-output name=port::6379
-    shell: bash
-  outputs:
-    host:
-      description: Host the Redis server is running on
-    port:
-      description: Port the Redis server is running on
+    - run: |
+        sudo add-apt-repository ppa:redislabs/redis
+        sudo apt-get update
+        sudo apt-get install redis-server -y
+        echo ::set-output name=host::localhost
+        echo ::set-output name=port::6379
+      shell: bash
+outputs:
+  host:
+    description: Host the Redis server is running on
+  port:
+    description: Port the Redis server is running on
