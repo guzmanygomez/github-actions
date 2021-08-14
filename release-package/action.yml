@@ -5,8 +5,8 @@ runs:
   steps:
     - run: |
         yarn release:build
-        gh release create ${{ github.ref }}
       shell: bash
     - run: |
+        echo ${{ github.token }} | gh auth login --with-token
         gh release upload ${{ github.ref }} *.zip
       shell: bash
