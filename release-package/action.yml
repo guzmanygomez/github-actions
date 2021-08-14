@@ -1,5 +1,8 @@
 name: "Release package"
 description: "create and upload packages"
+inputs:
+  version:
+    required: true
 runs:
   using: "composite"
   steps:
@@ -8,5 +11,5 @@ runs:
       shell: bash
     - run: |
         echo ${{ github.token }} | gh auth login --with-token
-        gh release upload ${{ github.ref }} *.zip
+        gh release upload ${{ inputs.version }} *.zip
       shell: bash
