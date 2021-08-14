@@ -1,18 +1,8 @@
 name: "Release package"
 description: "create and upload packages"
-# inputs:
-#   release_version:
-#     required: true
 runs:
   using: "composite"
-  strategy:
-      matrix: 
-        run: ['Dev/Australia', 'Staging/Australia', 'Dev/Usa', 'Staging/Usa']
   steps:
     - run: |
-        set -- $(echo Dev/Australia | tr "/" " ")
-        export GYG_ENV=$1
-        export GYG_REGION=$2
-        export RELEASE_VERSION=${ ${ github.ref } }
         yarn release:build
       shell: bash
