@@ -8,5 +8,6 @@ runs:
       shell: bash
     - run: |
         echo ${{ github.token }} | gh auth login --with-token
+        gh release create ${{ github.ref }}
         gh release upload ${{ github.ref }} *.zip
       shell: bash
