@@ -1,12 +1,20 @@
 name: "Release package"
 description: "create and upload packages"
 inputs:
+  gyg_env:
+    required: true
+  gyg_region:
+    required: true
   version:
     required: true
 runs:
   using: "composite"
   steps:
-    - run: |
+    - env:
+        GYG_ENV: ${{ inputs.gyg_env }}
+        GYG_REGION: ${{ inputs.gyg_region }}
+        RELEASE_VERSION: ${{ inputs.version }}
+      run: |
         yarn release:build
       shell: bash
     - run: |
