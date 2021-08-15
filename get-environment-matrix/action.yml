@@ -1,0 +1,25 @@
+name: "Get Environment Matrix"
+description: "Provides JSON output of the matrix combination of gyg_env and gyg_region"
+outputs:
+  matrix: # id of output
+    description: "JSON format environment matrix output"
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        cat << EOF > matrix.yaml
+        gyg_env: [Dev, Staging]
+        gyg_region: [Australia, USA]
+        include:
+        - gyg_env: Dev
+          AWS_KEY: AWS_TEST_DEPLOY_KEY
+          AWS_SECRET: AWS_TEST_DEPLOY_SECRET
+          AWS_REGION: AWS_TEST_DEPLOY_REGION
+        - gyg_env: Staging
+          AWS_KEY: AWS_STAGING_DEPLOY_KEY
+          AWS_SECRET: AWS_STAGING_DEPLOY_SECRET
+          AWS_REGION: AWS_STAGING_DEPLOY_REGION
+        EOF
+        matrix=$(perl -MYAML::XS=LoadFile -MJSON::XS=encode_json -e 'for (@ARGV) { for (LoadFile($_)) { print encode_json($_),"\n" } }' matrix.yaml)
+        echo "::set-output name=matrix::{$matrix}"
+      shell: bash
