@@ -11,5 +11,7 @@ runs:
       shell: bash
     - run: |
         echo ${{ github.token }} | gh auth login --with-token
+        artifacts=*.zip; msg="Uploading $artifacts to release ${{ inputs.version }}"
+        echo $msg
         gh release upload ${{ inputs.version }} *.zip
       shell: bash
