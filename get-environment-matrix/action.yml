@@ -1,5 +1,5 @@
 name: "Get Environment Matrix"
-description: "Provides JSON output of the matrix combination of gyg_env and gyg_region"
+description: "Provides JSON output of the matrix combination of gyg_env and gyg_region with AWS access keys"
 outputs:
   matrix: # id of output
     description: "JSON format environment matrix output"
