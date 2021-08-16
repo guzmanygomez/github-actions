@@ -25,6 +25,6 @@ runs:
       run: |
         ls -alh
         yarn release:diff || true
-        #yarn release:deploy
+        yarn release:deploy
       shell: bash
     
