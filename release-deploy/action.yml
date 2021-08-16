@@ -12,9 +12,9 @@ runs:
   steps:
     - run: |
         echo ${{ github.token }} | gh auth login --with-token
-        msg="Downloading artifact '${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-*-${{ inputs.version }}.zip' for deployment}"
+        msg="Downloading artifact '*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.version }}.zip' for deployment}"
         echo $msg
-        gh release download -p '${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-*-${{ inputs.version }}.zip ${{ inputs.version }}'
+        gh release download -p '*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.version }}.zip ${{ inputs.version }}'
       shell: bash
     - env:
         GYG_ENV: ${{ inputs.gyg_env }}
