@@ -24,7 +24,7 @@ runs:
         RELEASE_VERSION: ${{ inputs.version }}
       run: |
         ls -alh
-        yarn release:diff
+        yarn release:diff || true
         #yarn release:deploy
       shell: bash
     
