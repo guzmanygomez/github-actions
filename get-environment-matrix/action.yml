@@ -3,10 +3,12 @@ description: "Provides JSON output of the matrix combination of gyg_env and gyg_
 outputs:
   matrix: # id of output
     description: "JSON format environment matrix output"
+    value: ${{ steps.generate-matrix.outputs.matrix }}
 runs:
   using: "composite"
   steps:
-    - run: |
+    - id: generate-matrix
+      run: |
         cat << EOF > matrix.yaml
         gyg_env: [Dev, Staging]
         gyg_region: [Australia, USA]
