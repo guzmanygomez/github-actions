@@ -1,5 +1,5 @@
 name: "Get Environment Matrix"
-description: "Provides JSON output of the matrix combination of gyg_env and gyg_region with AWS access keys"
+description: "Provides JSON output of the matrix combination of GYG_ENV and GYG_REGION with AWS access keys"
 outputs:
   matrix: # id of output
     description: "JSON format environment matrix output"
@@ -10,14 +10,14 @@ runs:
     - id: generate-matrix
       run: |
         cat << EOF > matrix.yaml
-        gyg_env: [Dev, Staging]
-        gyg_region: [Australia, USA]
+        gyg_env: [dev, staging]
+        gyg_region: [australia, usa]
         include:
-        - gyg_env: Dev
+        - gyg_env: dev
           AWS_KEY: AWS_TEST_DEPLOY_KEY
           AWS_SECRET: AWS_TEST_DEPLOY_SECRET
           AWS_REGION: AWS_TEST_DEPLOY_REGION
-        - gyg_env: Staging
+        - gyg_env: staging
           AWS_KEY: AWS_STAGING_DEPLOY_KEY
           AWS_SECRET: AWS_STAGING_DEPLOY_SECRET
           AWS_REGION: AWS_STAGING_DEPLOY_REGION
