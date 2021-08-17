@@ -13,7 +13,6 @@ runs:
     - run: |
         echo ${{ github.token }} | gh auth login --with-token
         zipName="*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.version }}.zip"
-        zipName=$(echo $zipName |  tr '[:upper:]' '[:lower:]')
         msg="Downloading artifact '$zipName' for deployment"
         echo $msg
         gh release download -p $zipName ${{ inputs.version }}
