@@ -1,0 +1,28 @@
+name: "Release deploy"
+description: "download packages and deploy"
+inputs:
+  gyg_env:
+    required: true
+  gyg_region:
+    required: true
+  version:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        echo ${{ github.token }} | gh auth login --with-token
+        zipName="*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.version }}.zip"
+        msg="Downloading artifact '$zipName' for deployment"
+        echo $msg
+        gh release download -p $zipName ${{ inputs.version }}
+      shell: bash
+    - env:
+        GYG_ENV: ${{ inputs.gyg_env }}
+        GYG_REGION: ${{ inputs.gyg_region }}
+        RELEASE_VERSION: ${{ inputs.version }}
+      run: |
+        yarn release:diff || true
+        yarn release:deploy
+      shell: bash
+    
