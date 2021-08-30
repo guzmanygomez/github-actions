@@ -6,6 +6,7 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - run: [[ "${{ inputs.version }}" =~ ^v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$ ]]
     - run: |
         git tag ${{ inputs.version }}
         git push origin ${{ inputs.version }}
