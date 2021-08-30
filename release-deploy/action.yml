@@ -10,7 +10,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - run: [[ "${{ inputs.version }}" =~ ^v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$ ]] 
+    - run: [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] 
     - run: |
         echo ${{ github.token }} | gh auth login --with-token
         zipName="*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.version }}.zip"

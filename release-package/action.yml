@@ -10,7 +10,7 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - run: [[ "${{ inputs.version }}" =~ ^v[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+$ ]]
+    - run: [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
     - env:
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
