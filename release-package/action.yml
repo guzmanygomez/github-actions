@@ -10,6 +10,13 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - run: |
+        if ! [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; 
+        then
+          echo "version needs to be of format v*.*.* where * is a digit. e.g. v0.3.2";
+          exit 1;
+        fi
+      shell: bash
     - env:
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
