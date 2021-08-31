@@ -8,17 +8,18 @@ outputs:
     description: "Version number output"
     value: ${{ steps.release-version.outputs.version }}
 runs:
-  id: release-version
   using: "composite"
   steps:
     - run: |
+        echo "${{ inputs.version }}"
         if ! [[ "${{ inputs.version }}" =~ "^major|minor|patch$" ]]; 
         then
           echo "version needs to be: major OR minor OR patch";
           exit 1;
         fi
       shell: bash
-    - run: |
+    - id: release-version
+      run: |
         yarn version --${{ inputs.version }}
         VERSION=`node -pe "require('./package.json').version"`
         echo "::set-output name=version::$(echo $VERSION)"
