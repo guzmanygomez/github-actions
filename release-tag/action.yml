@@ -23,6 +23,9 @@ runs:
         yarn version --${{ inputs.version }}
         VERSION=`node -pe "require('./package.json').version"`
         echo "::set-output name=version::$(echo $VERSION)"
+        git add .
+        git commit -m "${{ inputs.message }}" || true
+        git push
         git push origin $VERSION
         echo ${{ github.token }} | gh auth login --with-token
         gh release create $VERSION
