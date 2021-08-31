@@ -3,7 +3,12 @@ description: "tag a release"
 inputs:
   version:
     required: true
+outputs:
+  version: # id of output
+    description: "Version number output"
+    value: ${{ steps.release-version.outputs.version }}
 runs:
+  id: release-version
   using: "composite"
   steps:
     - run: |
@@ -15,7 +20,9 @@ runs:
       shell: bash
     - run: |
         yarn version --${{ inputs.version }}
-        git push origin ${{ inputs.version }}
+        VERSION=`node -pe "require('./package.json').version"`
+        echo "::set-output name=version::$(echo $VERSION)"
+        git push origin $VERSION
         echo ${{ github.token }} | gh auth login --with-token
-        gh release create ${{ inputs.version }}
+        gh release create $VERSION
       shell: bash
