@@ -7,14 +7,14 @@ runs:
   using: "composite"
   steps:
     - run: |
-        if ! [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; 
+        if ! [[ "${{ inputs.version }}" =~ "^major|minor|patch$" ]]; 
         then
-          echo "version needs to be of format v*.*.* where * is a digit. e.g. v0.3.2";
+          echo "version needs to be: major OR minor OR patch";
           exit 1;
         fi
       shell: bash
     - run: |
-        git tag ${{ inputs.version }}
+        yarn version --${{ inputs.version }}
         git push origin ${{ inputs.version }}
         echo ${{ github.token }} | gh auth login --with-token
         gh release create ${{ inputs.version }}
