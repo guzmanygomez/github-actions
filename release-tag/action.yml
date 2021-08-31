@@ -11,8 +11,8 @@ runs:
   using: "composite"
   steps:
     - run: |
-        echo "${{ inputs.version }}"
-        if ! [[ "${{ inputs.version }}" =~ "^major|minor|patch$" ]]; 
+        echo "Releasing a '${{ inputs.version }}' version"
+        if ! [[ "${{ inputs.version }}" =~ ^major|minor|patch$ ]]; 
         then
           echo "version needs to be: major OR minor OR patch";
           exit 1;
