@@ -22,9 +22,9 @@ runs:
           AWS_SECRET: AWS_STAGING_DEPLOY_SECRET
           AWS_REGION: AWS_STAGING_DEPLOY_REGION
         - gyg_env: prod
-          AWS_KEY: AWS_PROD_DEPLOY_KEY
-          AWS_SECRET: AWS_PROD_DEPLOY_SECRET
-          AWS_REGION: AWS_PROD_DEPLOY_REGION
+          AWS_KEY: AWS_PRODUCTION_DEPLOY_KEY
+          AWS_SECRET: AWS_PRODUCTION_DEPLOY_SECRET
+          AWS_REGION: AWS_PRODUCTION_DEPLOY_REGION
         EOF
         npm install -g yamljs
         matrix=$(yaml2json matrix.yaml)
