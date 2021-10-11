@@ -4,7 +4,7 @@ outputs:
   matrix: # id of output
     description: "JSON format environment matrix output"
     value: ${{ steps.generate-matrix.outputs.matrix }}
-runs: 
+runs:
   using: "composite"
   steps:
     - id: generate-matrix
