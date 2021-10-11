@@ -4,16 +4,16 @@ outputs:
   matrix: # id of output
     description: "JSON format environment matrix output"
     value: ${{ steps.generate-matrix.outputs.matrix }}
-runs:
+runs: 
   using: "composite"
   steps:
     - id: generate-matrix
       run: |
         cat << EOF > matrix.yaml
-        gyg_env: [dev, staging, prod]
+        gyg_env: [test, staging, prod]
         gyg_region: [australia, usa]
         include:
-        - gyg_env: dev
+        - gyg_env: test
           AWS_KEY: AWS_TEST_DEPLOY_KEY
           AWS_SECRET: AWS_TEST_DEPLOY_SECRET
           AWS_REGION: AWS_TEST_DEPLOY_REGION
