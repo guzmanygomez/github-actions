@@ -9,13 +9,8 @@ jobs:
 
         steps:
 
-            - name: Pin Node to 14
-              uses: actions/setup-node@v2
-              with:
-                  node-version: 14
-
             - name: Set up MySQL
-              uses: guzmanygomez/github-actions/setup-mysql@main@fix/mysql-action-update
+              uses: guzmanygomez/github-actions/setup-mysql@fix/mysql-action-update
               with:
                   username: gyg
                   password: gyg
