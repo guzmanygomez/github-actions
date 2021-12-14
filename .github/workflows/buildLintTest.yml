@@ -15,7 +15,7 @@ jobs:
               id: extract_branch
 
             - name: Set up MySQL
-              uses: guzmanygomez/github-actions/setup-mysql@${{steps.extract_branch.outputs.branch}}
+              uses: guzmanygomez/github-actions/setup-mysql@${{ steps.extract_branch.outputs.branch }}
               with:
                   username: gyg
                   password: gyg
