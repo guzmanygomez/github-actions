@@ -2,9 +2,10 @@ name: "Setup MySQL"
 description: ""
 inputs:
   username:
-
+    description: "Username"
     required: true
   password:
+    description: "password"
     required: true
 runs:
   using: "composite"
