@@ -2,14 +2,16 @@ name: "Setup MySQL"
 description: ""
 inputs:
   username:
+    description: "Username"
     required: true
   password:
+    description: "password"
     required: true
 runs:
   using: "composite"
   steps:
     - run: |
-        sudo /etc/init.d/mysql start
+        sudo service mysql start
         mysql -u root --password=root -e "CREATE USER '${{ inputs.username }}'@'localhost' IDENTIFIED BY '${{ inputs.password }}';"
         mysql -u root --password=root -e "GRANT ALL PRIVILEGES ON * . * TO '${{ inputs.username }}'@'localhost';"
         mysql -u root --password=root -e "FLUSH PRIVILEGES;"
