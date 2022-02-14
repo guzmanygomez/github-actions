@@ -7,6 +7,8 @@ inputs:
     required: true
   version:
     required: true
+  branch:
+    required: false
 runs:
   using: "composite"
   steps:
@@ -21,6 +23,7 @@ runs:
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
         RELEASE_VERSION: ${{ inputs.version }}
+        BRANCH: ${{ inputs.branch }}
       run: |
         yarn release:build
       shell: bash
