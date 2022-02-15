@@ -7,28 +7,24 @@ inputs:
     required: true
   version:
     required: true
-  branch:
-    required: false
 runs:
   using: "composite"
   steps:
     - run: |
-        if ! [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; 
+        if ! [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+[\-0-9a-zA-z]*$ ]];
         then
           echo "version needs to be of format v*.*.* where * is a digit. e.g. v0.3.2";
+          echo "optionally version can have the branch suffixed v*.*.*-branch-name";
           exit 1;
         fi
       shell: bash
     - run: |
         echo ${{ github.token }} | gh auth login --with-token
-        zipName="*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.version }}"
-        if [[ -n "${{ inputs.branch }}" ]]; then
-          zipName="$zipName-${{ inputs.branch }}";
-        fi
-        zipName="${zipName}.zip"
+        zipName="*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.version }}.zip"
         msg="Downloading artifact '$zipName' for deployment"
         echo $msg
-        gh release download -p $zipName ${{ inputs.version }}
+        release_version=`echo "${{ inputs.version }}" | sed -E 's/.*(v[0-9]+\.[0-9]+\.[0-9]+).*/\1/'`
+        gh release download -p $zipName $release_version
       shell: bash
     - env:
         GYG_ENV: ${{ inputs.gyg_env }}
