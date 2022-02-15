@@ -7,6 +7,8 @@ inputs:
     required: true
   version:
     required: true
+  branch:
+    required: false
 runs:
   using: "composite"
   steps:
@@ -19,7 +21,11 @@ runs:
       shell: bash
     - run: |
         echo ${{ github.token }} | gh auth login --with-token
-        zipName="*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.version }}.zip"
+        zipName="*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.version }}"
+        if [[ -n "${{ inputs.branch }}" ]]; then
+          zipName="$zipName-${{ inputs.branch }}";
+        fi
+        zipName="${zipName}.zip"
         msg="Downloading artifact '$zipName' for deployment"
         echo $msg
         gh release download -p $zipName ${{ inputs.version }}
@@ -28,6 +34,7 @@ runs:
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
         RELEASE_VERSION: ${{ inputs.version }}
+        BRANCH: ${{ inputs.branch }}
       run: |
         yarn release:diff || true
         yarn release:deploy
