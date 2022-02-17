@@ -25,7 +25,7 @@ runs:
         yarn version --${{ inputs.version }}
         VERSION=v`node -pe "require('./package.json').version"`
         if [ -n "${{ inputs.branch }}" ]; then
-          if [ "${{ inputs.branch }} != "develop" ]; then
+          if [ "${{ inputs.branch }}" != "develop" ]; then
               VERSION="$VERSION-${{ inputs.branch }}"
           fi
         fi
