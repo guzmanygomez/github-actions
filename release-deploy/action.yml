@@ -23,8 +23,7 @@ runs:
         zipName="*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.version }}.zip"
         msg="Downloading artifact '$zipName' for deployment"
         echo $msg
-        release_version=`echo "${{ inputs.version }}" | sed -E 's/.*(v[0-9]+\.[0-9]+\.[0-9]+).*/\1/'`
-        gh release download -p $zipName $release_version
+        gh release download -p $zipName ${{ inputs.version }}
       shell: bash
     - env:
         GYG_ENV: ${{ inputs.gyg_env }}

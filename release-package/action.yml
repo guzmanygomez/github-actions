@@ -13,9 +13,10 @@ runs:
   using: "composite"
   steps:
     - run: |
-        if ! [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; 
+        if ! [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+[\-0-9a-zA-z]*$ ]];
         then
           echo "version needs to be of format v*.*.* where * is a digit. e.g. v0.3.2";
+          echo "optionally version can have the branch suffixed v*.*.*-branch-name";
           exit 1;
         fi
       shell: bash

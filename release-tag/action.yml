@@ -3,6 +3,8 @@ description: "tag a release"
 inputs:
   version:
     required: true
+  branch:
+    required: false
 outputs:
   version: # id of output
     description: "Version number output"
@@ -22,6 +24,11 @@ runs:
       run: |
         yarn version --${{ inputs.version }}
         VERSION=v`node -pe "require('./package.json').version"`
+        if [ -n "${{ inputs.branch }}" ]; then
+          if [ "${{ inputs.branch }} != "develop" ]; then
+              VERSION="$VERSION-${{ inputs.branch }}"
+          fi
+        fi
         echo "::set-output name=version::$(echo $VERSION)"
         git add .
         git commit -m "${{ inputs.version }} update - $VERSION" || true
