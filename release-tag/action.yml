@@ -4,7 +4,7 @@ inputs:
   version:
     required: true
   branch:
-    required: false
+    required: true
 outputs:
   version: # id of output
     description: "Version number output"
@@ -22,13 +22,12 @@ runs:
       shell: bash
     - id: release-version
       run: |
-        yarn version --${{ inputs.version }}
-        VERSION=v`node -pe "require('./package.json').version"`
-        if [ -n "${{ inputs.branch }}" ]; then
-          if [ "${{ inputs.branch }}" != "develop" ]; then
-              VERSION="$VERSION-${{ inputs.branch }}"
-          fi
+        if [ "${{ inputs.branch }}" != "develop" ]; then
+          yarn version --pre${{ inputs.version }} --preid ${{ inputs.branch }} 
+        else
+          yarn version --${{ inputs.version }}
         fi
+        VERSION=v`node -pe "require('./package.json').version"`
         echo "::set-output name=version::$(echo $VERSION)"
         git add .
         git commit -m "${{ inputs.version }} update - $VERSION" || true
