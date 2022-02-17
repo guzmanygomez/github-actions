@@ -29,7 +29,6 @@ runs:
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
         RELEASE_VERSION: ${{ inputs.version }}
-        BRANCH: ${{ inputs.branch }}
       run: |
         yarn release:diff || true
         yarn release:deploy
