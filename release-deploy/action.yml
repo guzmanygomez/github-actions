@@ -7,9 +7,21 @@ inputs:
     required: true
   version:
     required: true
+  passphrase:
+    required: false
 runs:
   using: "composite"
   steps:
+    - run: |
+        if [[ "${{ inputs.gyg_env }}" == "prod" ]];
+        then 
+          if ! [[ "${{ inputs.passphrase }}" == "${{ secrets.BHYVE_DEPLOY_PROD_PASSPHRASE }}" ]];
+          then
+            echo "Production deploy requires the correct passphrase to be entered."
+            exit 1;
+          fi
+        fi
+      shell: bash
     - run: |
         if ! [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+[\-0-9a-zA-z\.]*$ ]];
         then
