@@ -1,0 +1,60 @@
+name: Build, Lint, Test
+
+on:
+    push:
+        branches: [develop]
+    pull_request:
+        branches: [develop]
+
+jobs:
+    Build-Lint-Test:
+        runs-on: ubuntu-latest
+
+        steps:
+
+            - name: Pin Node to 14
+              uses: actions/setup-node@v2
+              with:
+                  node-version: 14
+
+            - name: Set up MySQL
+              uses: guzmanygomez/github-actions/setup-mysql@main
+              with:
+                  username: gyg
+                  password: gyg
+
+            - name: Get yarn cache directory path
+              id: yarn-cache-dir-path
+              run: echo "::set-output name=dir::$(yarn cache dir)"
+
+            - uses: actions/cache@v2
+              with:
+                  path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+                  key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-yarn-
+            - name: Set up AWS
+              uses: guzmanygomez/github-actions/setup-aws-config@main
+              with:
+                  AWS_KEY: ${{ secrets.AWS_CODEARTIFACT_KEY }}
+                  AWS_SECRET: ${{ secrets.AWS_CODEARTIFACT_SECRET }}
+                  AWS_REGION: ${{ secrets.AWS_CODEARTIFACT_REGION }}
+
+            - name: Set up AWS CodeArtifact
+              uses: guzmanygomez/github-actions/code-artifact@main
+
+            - uses: actions/checkout@v2
+              with:
+                  fetch-depth: 0
+
+            - name: Install Node Modules
+              run: yarn install
+
+            - name: Build
+              env:
+                  BHYVE_TASK_API_KEY: ${{ secrets.BHYVE_TASK_API_KEY }}
+                  BHYVE_TASK_API_URL: ${{ secrets.BHYVE_TASK_API_URL }}
+                  AWS_REGION: ap-southeast-2
+              run: |
+                  yarn pipeline:initdb
+                  yarn pipeline:build
