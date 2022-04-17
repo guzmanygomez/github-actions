@@ -1,0 +1,143 @@
+name: Create Release with artifacts
+
+on:
+  workflow_call:
+    inputs:
+      tag_version:
+        description: 'Version number type to release (major|minor|patch)'
+        required: true
+        type: string
+    secrets:
+      AWS_CODEARTIFACT_KEY:
+        required: true
+      AWS_CODEARTIFACT_SECRET:
+        required: true
+      AWS_CODEARTIFACT_REGION:
+        required: true
+      AWS_TEST_DEPLOY_KEY:
+        required: true
+      AWS_TEST_DEPLOY_SECRET:
+        required: true
+      AWS_TEST_DEPLOY_REGION:
+        required: true
+      AWS_STAGING_DEPLOY_KEY:
+        required: true
+      AWS_STAGING_DEPLOY_SECRET:
+        required: true
+      AWS_STAGING_DEPLOY_REGION:
+        required: true
+      AWS_PRODUCTION_DEPLOY_KEY:
+        required: true
+      AWS_PRODUCTION_DEPLOY_SECRET:
+        required: true
+      AWS_PRODUCTION_DEPLOY_REGION:
+        required: true    
+jobs:
+  Setup-Matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.get-matrix.outputs.matrix }}
+    steps:
+      - id: get-matrix
+        name: Get Environment Matrix
+        uses: guzmanygomez/github-actions/get-environment-matrix@main
+
+  Check-Matrix:
+    needs: Setup-Matrix
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install json2yaml
+        run: |
+          npm install -g yamljs
+
+      - name: Check matrix definition
+        run: |
+          matrix='${{ needs.Setup-Matrix.outputs.matrix }}'
+          echo $matrix
+          echo $matrix | jq .
+          echo $matrix | json2yaml -d 3 -  
+
+  Tag-Feature:
+    needs: Setup-Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag-release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up git name and email
+        uses: guzmanygomez/github-actions/setup-git-name-and-email@main
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+
+      - id: tag-release
+        name: Tag release
+        uses: guzmanygomez/github-actions/release-tag@main
+        with:
+          version: ${{ inputs.tag_version }}
+          branch: ${{ steps.extract_branch.outputs.branch }}
+
+  Release-Feature:
+    needs: [Tag-Feature, Setup-Matrix]
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix: ${{fromJSON(needs.Setup-Matrix.outputs.matrix)}}
+    steps:
+      - name: Pin Node to 14
+        uses: actions/setup-node@v2
+        with:
+          node-version: 14
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - uses: actions/cache@v2
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Set up AWS
+        uses: guzmanygomez/github-actions/setup-aws-config@main
+        with:
+          AWS_KEY: ${{ secrets.AWS_CODEARTIFACT_KEY }}
+          AWS_SECRET: ${{ secrets.AWS_CODEARTIFACT_SECRET }}
+          AWS_REGION: ${{ secrets.AWS_CODEARTIFACT_REGION }}
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+
+      - name: Set up AWS CodeArtifact
+        uses: guzmanygomez/github-actions/code-artifact@main
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.extract_branch.outputs.branch }}
+
+      - name: Install Node Modules
+        run: yarn install
+
+      - name: Set up AWS
+        uses: guzmanygomez/github-actions/setup-aws-config@main
+        with:
+          AWS_KEY: ${{ secrets[matrix.AWS_KEY] }}
+          AWS_SECRET: ${{ secrets[matrix.AWS_SECRET] }}
+          AWS_REGION: ${{ secrets[matrix.AWS_REGION] }}
+
+      - name: Build release package
+        uses: guzmanygomez/github-actions/release-package@main
+        with:
+          gyg_env: ${{ matrix.gyg_env }}
+          gyg_region: ${{ matrix.gyg_region }}
+          version: ${{ needs.Tag-Feature.outputs.version }}
