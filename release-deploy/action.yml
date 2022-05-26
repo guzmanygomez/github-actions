@@ -12,15 +12,6 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Slack Notification
-      uses: rtcamp/action-slack-notify@v2
-      env:
-          SLACK_CHANNEL: gyg
-          SLACK_COLOR: ${{ job.status }}
-          SLACK_TITLE: 'Deploying ${{ github.event.repository.name }} ${{ inputs.version }} to ${{ inputs.gyg_env }}_${{ inputs.gyg_region }}'
-          SLACK_MESSAGE: 'Please check ${{ github.event.repository.name }} for a new release after a few minutes.'
-          SLACK_USERNAME: Github
-          SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
     - run: |
         if ! [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+[\-0-9a-zA-z\.]*$ ]];
         then
@@ -44,4 +35,13 @@ runs:
         yarn release:diff || true
         yarn release:deploy
       shell: bash
+    - name: Slack Notification
+      uses: rtcamp/action-slack-notify@v2
+      env:
+          SLACK_CHANNEL: gyg
+          SLACK_COLOR: ${{ job.status }}
+          SLACK_TITLE: 'Deploying ${{ github.event.repository.name }} ${{ inputs.version }} to ${{ inputs.gyg_env }}_${{ inputs.gyg_region }}'
+          SLACK_MESSAGE: 'Deployment successful.'
+          SLACK_USERNAME: Github
+          SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
     
