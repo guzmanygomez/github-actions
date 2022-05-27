@@ -7,6 +7,8 @@ inputs:
     required: true
   version:
     required: true
+  slack_webhook:
+    required: true
 runs:
   using: "composite"
   steps:
@@ -33,4 +35,13 @@ runs:
         yarn release:diff || true
         yarn release:deploy
       shell: bash
+    - name: Slack Notification
+      uses: rtcamp/action-slack-notify@v2
+      env:
+          SLACK_CHANNEL: gyg
+          SLACK_COLOR: ${{ job.status }}
+          SLACK_TITLE: 'Deploying ${{ github.event.repository.name }} ${{ inputs.version }} to ${{ inputs.gyg_env }}_${{ inputs.gyg_region }}'
+          SLACK_MESSAGE: 'Deployment successful.'
+          SLACK_USERNAME: Github
+          SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
     
