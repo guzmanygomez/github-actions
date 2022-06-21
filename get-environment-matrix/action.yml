@@ -11,7 +11,7 @@ runs:
       run: |
         cat << EOF > matrix.yaml
         gyg_env: [test, staging, prod]
-        gyg_region: [australia, usa, singapore]
+        gyg_region: [australia, usa]
         include:
         - gyg_env: test
           AWS_KEY: AWS_TEST_DEPLOY_KEY
