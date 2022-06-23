@@ -11,20 +11,25 @@ runs:
       run: |
         cat << EOF > matrix.yaml
         gyg_env: [test, staging, prod]
-        gyg_region: [australia, usa]
+        gyg_region: [australia, usa, singapore]
         include:
-        - gyg_env: test
-          AWS_KEY: AWS_TEST_DEPLOY_KEY
-          AWS_SECRET: AWS_TEST_DEPLOY_SECRET
-          AWS_REGION: AWS_TEST_DEPLOY_REGION
-        - gyg_env: staging
-          AWS_KEY: AWS_STAGING_DEPLOY_KEY
-          AWS_SECRET: AWS_STAGING_DEPLOY_SECRET
-          AWS_REGION: AWS_STAGING_DEPLOY_REGION
-        - gyg_env: prod
-          AWS_KEY: AWS_PRODUCTION_DEPLOY_KEY
-          AWS_SECRET: AWS_PRODUCTION_DEPLOY_SECRET
-          AWS_REGION: AWS_PRODUCTION_DEPLOY_REGION
+          - gyg_env: test
+            AWS_KEY: AWS_TEST_DEPLOY_KEY
+            AWS_SECRET: AWS_TEST_DEPLOY_SECRET
+            AWS_REGION: AWS_TEST_DEPLOY_REGION
+          - gyg_env: staging
+            AWS_KEY: AWS_STAGING_DEPLOY_KEY
+            AWS_SECRET: AWS_STAGING_DEPLOY_SECRET
+            AWS_REGION: AWS_STAGING_DEPLOY_REGION
+          - gyg_env: prod
+            AWS_KEY: AWS_PRODUCTION_DEPLOY_KEY
+            AWS_SECRET: AWS_PRODUCTION_DEPLOY_SECRET
+            AWS_REGION: AWS_PRODUCTION_DEPLOY_REGION
+        exclude:
+          - gyg_env: test
+            gyg_region: singapore
+          - gyg_env: prod
+            gyg_region: singapore
         EOF
         npm install -g yamljs
         matrix=$(yaml2json matrix.yaml)
