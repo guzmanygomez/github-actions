@@ -26,8 +26,6 @@ runs:
             AWS_SECRET: AWS_PRODUCTION_DEPLOY_SECRET
             AWS_REGION: AWS_PRODUCTION_DEPLOY_REGION
         exclude:
-          - gyg_env: test
-            gyg_region: singapore
           - gyg_env: prod
             gyg_region: singapore
         EOF
