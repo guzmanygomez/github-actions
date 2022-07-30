@@ -34,7 +34,8 @@ runs:
         GYG_REGION: ${{ inputs.gyg_region }}
         RELEASE_VERSION: ${{ inputs.version }}
       run: |
-        if [[ ${{ inputs.run_cmd }} == "" ]];
+        RUN_CMD=${{ inputs.run_cmd }}
+        if [[ ${RUN_CMD+exists} == "" ]];
         then
           yarn release:diff || true
           yarn release:deploy
