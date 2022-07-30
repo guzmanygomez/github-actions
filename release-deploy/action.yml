@@ -9,6 +9,8 @@ inputs:
     required: true
   slack_webhook:
     required: true
+  run_cmd:
+    required: false    
 runs:
   using: "composite"
   steps:
@@ -32,8 +34,13 @@ runs:
         GYG_REGION: ${{ inputs.gyg_region }}
         RELEASE_VERSION: ${{ inputs.version }}
       run: |
-        yarn release:diff || true
-        yarn release:deploy
+        if [[ ${{ inputs.run_cmd }} == "" ]];
+        then
+          yarn release:diff || true
+          yarn release:deploy
+        else
+          ${{ inputs.run_cmd }}
+        fi
       shell: bash
     - name: Slack Notification
       uses: rtcamp/action-slack-notify@v2

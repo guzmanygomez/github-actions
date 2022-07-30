@@ -28,7 +28,7 @@ runs:
         RELEASE_VERSION: ${{ inputs.version }}
         BRANCH: ${{ inputs.branch }}
       run: |
-        if [ -z ${{ inputs.run_cmd }} == ""];
+        if [[ ${{ inputs.run_cmd }} == "" ]];
         then
           yarn release:build
         else
