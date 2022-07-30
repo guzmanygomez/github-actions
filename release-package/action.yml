@@ -9,6 +9,8 @@ inputs:
     required: true
   branch:
     required: false
+  run_cmd:
+    required: false
 runs:
   using: "composite"
   steps:
@@ -26,7 +28,12 @@ runs:
         RELEASE_VERSION: ${{ inputs.version }}
         BRANCH: ${{ inputs.branch }}
       run: |
-        yarn release:build
+        if [ -z ${{ run_cmd }} == ""];
+        then
+          yarn release:build
+        else
+          ${{ run_cmd }}
+        fi
       shell: bash
     - run: |
         echo ${{ github.token }} | gh auth login --with-token
