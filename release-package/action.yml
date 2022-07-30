@@ -28,11 +28,11 @@ runs:
         RELEASE_VERSION: ${{ inputs.version }}
         BRANCH: ${{ inputs.branch }}
       run: |
-        if [ -z ${{ run_cmd }} == ""];
+        if [ -z ${{ inputs.run_cmd }} == ""];
         then
           yarn release:build
         else
-          ${{ run_cmd }}
+          ${{ inputs.run_cmd }}
         fi
       shell: bash
     - run: |
