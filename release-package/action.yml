@@ -28,7 +28,7 @@ runs:
         RELEASE_VERSION: ${{ inputs.version }}
         BRANCH: ${{ inputs.branch }}
       run: |
-        RUN_CMD=${{ inputs.run_cmd }}
+        RUN_CMD="${{ inputs.run_cmd }}"
         if [[ ${RUN_CMD+exists} == "" ]];
         then
           yarn release:build
