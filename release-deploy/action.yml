@@ -33,7 +33,11 @@ runs:
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
         RELEASE_VERSION: ${{ inputs.version }}
+        BHYVE_DEVELOPER_NAME: sofy
       run: |
+        if ! [[ $GYG_ENV == "test" ]]; then
+          unset BHYVE_DEVELOPER_NAME
+        fi
         RUN_CMD="${{ inputs.run_cmd }}"
         if [[ ${RUN_CMD+exists} == "" ]];
         then
