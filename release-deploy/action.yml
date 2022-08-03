@@ -9,7 +9,7 @@ inputs:
     required: true
   slack_webhook:
     required: true
-  run_cmd:
+  deploy_cmd:
     required: false    
 runs:
   using: "composite"
@@ -34,13 +34,14 @@ runs:
         GYG_REGION: ${{ inputs.gyg_region }}
         RELEASE_VERSION: ${{ inputs.version }}
       run: |
-        RUN_CMD="${{ inputs.run_cmd }}"
+        
+        RUN_CMD="${{ inputs.deploy_cmd }}"
         if [[ ${RUN_CMD+exists} == "" ]];
         then
           yarn release:diff || true
           yarn release:deploy
         else
-          ${{ inputs.run_cmd }}
+          ${{ inputs.deploy_cmd }}
         fi
       shell: bash
     - name: Slack Notification
