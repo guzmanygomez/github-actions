@@ -10,7 +10,10 @@ inputs:
   slack_webhook:
     required: true
   deploy_cmd:
-    required: false    
+    required: false
+  working_directory:
+    required: false
+    default: '.'    
 runs:
   using: "composite"
   steps:
@@ -29,6 +32,7 @@ runs:
         echo $msg
         gh release download -p $zipName ${{ inputs.version }}
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
     - env:
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
@@ -44,6 +48,7 @@ runs:
           ${{ inputs.deploy_cmd }}
         fi
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
     - name: Slack Notification
       uses: rtcamp/action-slack-notify@v2
       env:
