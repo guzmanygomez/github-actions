@@ -9,9 +9,13 @@ inputs:
     required: true
   branch:
     required: false
+  working_directory:
+    required: false
+    default: '.'
 runs:
   using: "composite"
   steps:
+    
     - run: |
         if ! [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+[\-0-9a-zA-z\.]*$ ]];
         then
@@ -20,6 +24,7 @@ runs:
           exit 1;
         fi
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
     - env:
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
@@ -28,9 +33,11 @@ runs:
       run: |
         yarn release:build
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
     - run: |
         echo ${{ github.token }} | gh auth login --with-token
         artifacts=*.zip; msg="Uploading $artifacts to release ${{ inputs.version }}"
         echo $msg
         gh release upload ${{ inputs.version }} *.zip
       shell: bash
+      working-directory: ${{ inputs.working_directory }}
