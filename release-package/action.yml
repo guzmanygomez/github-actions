@@ -12,8 +12,6 @@ inputs:
   working_directory:
     required: false
     default: '.'
-  release_cmd:
-    required: false
 runs:
   using: "composite"
   steps:
@@ -33,13 +31,7 @@ runs:
         RELEASE_VERSION: ${{ inputs.version }}
         BRANCH: ${{ inputs.branch }}
       run: |
-        RUN_CMD="${{ inputs.release_cmd }}"
-        if [[ ${RUN_CMD+exists} == "" ]];
-        then
-          yarn release:build
-        else
-          ${{ inputs.release_cmd }}
-        fi
+        yarn release:build
       shell: bash
       working-directory: ${{ inputs.working_directory }}
     - run: |
