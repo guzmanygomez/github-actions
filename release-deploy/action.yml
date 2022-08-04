@@ -9,7 +9,7 @@ inputs:
     required: true
   slack_webhook:
     required: true
-  deploy_cmd:
+  deploy_suffix:
     required: false
   working_directory:
     required: false
@@ -38,14 +38,14 @@ runs:
         GYG_REGION: ${{ inputs.gyg_region }}
         RELEASE_VERSION: ${{ inputs.version }}
       run: |
-        
-        RUN_CMD="${{ inputs.deploy_cmd }}"
+        RUN_CMD="${{ inputs.deploy_suffix }}"
         if [[ ${RUN_CMD+exists} == "" ]];
         then
           yarn release:diff || true
           yarn release:deploy
         else
-          ${{ inputs.deploy_cmd }}
+          yarn release:diff:${{ inputs.deploy_suffix }} || true
+          yarn release:deploy:${{ inputs.deploy_suffix }}
         fi
       shell: bash
       working-directory: ${{ inputs.working_directory }}
