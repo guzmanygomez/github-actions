@@ -1,0 +1,17 @@
+name: "Diff migration"
+description: "check if migrations have been run before deploying"
+inputs:
+  db_host:
+    required: true
+  db_username:
+    required: true
+  db_password:
+    required: true 
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        mysql -h ${{ inputs.db_host }} -u ${{ inputs.db_username }} -p${{ inputs.db_password }} -A gyg -e "select * from SequelizeMeta" -N > db_result
+        ls -A ./node_modules/@gyg/orm-types/dist/migrations/*.js | xargs -d '\n' -n 1 basename > file_result
+        diff -w db_result file_result
+      shell: bash
