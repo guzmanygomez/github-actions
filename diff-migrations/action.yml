@@ -1,6 +1,8 @@
 name: "Diff migration"
 description: "check if migrations have been run before deploying"
 inputs:
+  vpn_profile:
+    required: true
   db_host:
     required: true
   db_username:
@@ -11,6 +13,11 @@ runs:
   using: "composite"
   steps:
     - run: |
+        sudo apt update
+        sudo apt-get install -y openvpn
+        echo "${{ inputs.vpn_profile }}" > /tmp/vpn_profile.ovpn
+        sudo openvpn --config /tmp/vpn_profile.ovpn --daemon
+        sleep 5
         mysql -h ${{ inputs.db_host }} -u ${{ inputs.db_username }} -p${{ inputs.db_password }} -A gyg -e "select * from SequelizeMeta" -N > db_result
         ls -A ./node_modules/@gyg/orm-types/dist/migrations/*.js | xargs -d '\n' -n 1 basename > file_result
         diff -w db_result file_result
