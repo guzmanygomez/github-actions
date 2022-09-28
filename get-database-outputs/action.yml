@@ -1,0 +1,58 @@
+name: "Get Database Outputs"
+description: "Provides outputs of the of GYG_ENV and GYG_REGION with Database information"
+inputs:
+  gyg_env:
+    required: true
+  gyg_region:
+    required: true
+outputs:
+  vpn_profile_secret_key:
+    value: ${{ steps.generate-db-outputs.outputs.vpn_profile_secret_key }}
+  db_username_secret_key:
+    value: ${{ steps.generate-db-outputs.outputs.db_username_secret_key }}
+  db_password_secret_key:
+    value: ${{ steps.generate-db-outputs.outputs.db_password_secret_key }}
+  db_host_secret_key:
+    value: ${{ steps.generate-db-outputs.outputs.db_host_secret_key }}  
+
+runs:
+  using: "composite"
+  steps:
+    - id: generate-db-outputs
+      run: |
+        if [ '${{ inputs.gyg_env }}' == 'prod' ];
+        then 
+          echo '::set-output name=vpn_profile_secret_key::VPN_PROFILE_PROD';
+          if [ '${{ inputs.gyg_region }}' == 'australia' ];
+          then
+            echo '::set-output name=db_username_secret_key::DB_USERNAME_PROD_AUSTRALIA';
+            echo '::set-output name=db_password_secret_key::DB_PASSWORD_PROD_AUSTRALIA';
+            echo '::set-output name=db_host_secret_key::DB_HOST_PROD_AUSTRALIA'
+          elif [ '${{ inputs.gyg_region }}' == 'usa' ];
+          then
+            echo '::set-output name=db_username_secret_key::DB_USERNAME_PROD_USA';
+            echo '::set-output name=db_password_secret_key::DB_PASSWORD_PROD_USA';
+            echo '::set-output name=db_host_secret_key::DB_HOST_PROD_USA';
+          fi
+        else
+          echo '::set-output name=vpn_profile_secret_key::VPN_PROFILE';
+          echo '::set-output name=db_username_secret_key::DB_USERNAME';
+          echo '::set-output name=db_password_secret_key::DB_PASSWORD';
+          if [ '${{ inputs.gyg_env }}' == 'staging' ];
+          then
+            if [ '${{ inputs.gyg_region }}' == 'australia' ];
+            then echo '::set-output name=db_host_secret_key::DB_HOST_STAGING_AUSTRALIA';
+            elif [ '${{ inputs.gyg_region }}' == 'usa' ];
+            then echo '::set-output name=db_host_secret_key::DB_HOST_STAGING_USA';
+            fi
+          fi
+          if [ '${{ inputs.gyg_env }}' == 'test' ];
+          then
+            if [ '${{ inputs.gyg_region }}' == 'australia' ];
+            then echo '::set-output name=db_host_secret_key::DB_HOST_TEST_AUSTRALIA';
+            elif [ '${{ inputs.gyg_region }}' == 'usa' ];
+            then echo '::set-output name=db_host_secret_key::DB_HOST_TEST_USA';
+            fi
+          fi
+        fi
+      shell: bash
