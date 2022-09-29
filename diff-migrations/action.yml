@@ -1,5 +1,5 @@
-name: "Diff migration"
-description: "check if migrations have been run before deploying"
+name: "Diff seeders and migrations"
+description: "check if seeders and migrations have been run before deploying"
 inputs:
   vpn_profile:
     required: true
