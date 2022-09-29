@@ -1,0 +1,45 @@
+name: "Diff seeders and migrations"
+description: "check if seeders and migrations have been run before deploying"
+inputs:
+  vpn_profile:
+    required: true
+  db_host:
+    required: true
+  db_username:
+    required: true
+  db_password:
+    required: true
+  gyg_env:
+    required: true
+  gyg_region:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        sudo apt update
+        sudo apt-get install -y openvpn
+        echo "${{ inputs.vpn_profile }}" > /tmp/vpn_profile.ovpn
+        sudo openvpn --config /tmp/vpn_profile.ovpn --daemon
+        sleep 5
+
+        mysql -h ${{ inputs.db_host }} -u ${{ inputs.db_username }} -p${{ inputs.db_password }} -A gyg -e "select * from SequelizeSeederData" -N > db_seeder_result
+
+        ls -A ./node_modules/@gyg/orm-types/dist/seeders/all/*.js | xargs -d '\n' -n 1 basename > file_seeder_result || :
+        ls -A ./node_modules/@gyg/orm-types/dist/seeders/all_${{ inputs.gyg_region }}/*.js | xargs -d '\n' -n 1 basename >> file_seeder_result || :
+        ls -A ./node_modules/@gyg/orm-types/dist/seeders/${{ inputs.gyg_env }}_all/*.js | xargs -d '\n' -n 1 basename >> file_seeder_result || :
+        ls -A ./node_modules/@gyg/orm-types/dist/seeders/${{ inputs.gyg_env }}_${{ inputs.gyg_region }}/*.js | xargs -d '\n' -n 1 basename >> file_seeder_result || :
+        sort file_seeder_result | awk '!a[$0]++' | awk '!/^[[:blank:]]*$/' > file_seeder_final_result
+        sort db_seeder_result | awk '!a[$0]++' | awk '!/^[[:blank:]]*$/' > db_seeder_final_result
+        diff -w db_seeder_final_result file_seeder_final_result
+
+        echo "::notice title=SEEDER::Seeders match what is in the Database"
+
+        mysql -h ${{ inputs.db_host }} -u ${{ inputs.db_username }} -p${{ inputs.db_password }} -A gyg -e "select * from SequelizeMeta" -N > db_result
+        ls -A ./node_modules/@gyg/orm-types/dist/migrations/*.js | xargs -d '\n' -n 1 basename > file_result
+
+        diff -w db_result file_result
+
+        echo "::notice title=MIGRATIONS::Migrations match what is in the Database"
+
+      shell: bash
