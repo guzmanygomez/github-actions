@@ -17,6 +17,7 @@ runs:
   using: "composite"
   steps:
     - run: |
+        yarn outdated @gyg/orm-types
         sudo apt update
         sudo apt-get install -y openvpn
         echo "${{ inputs.vpn_profile }}" > /tmp/vpn_profile.ovpn
