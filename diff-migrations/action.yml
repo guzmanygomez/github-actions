@@ -19,6 +19,7 @@ runs:
     - run: |
         echo "::notice title=Running Migration/Seeder status step::This checks for 3 things: @gyg/orm-types is not outdated, latest seeders and migrations have been run on the DB. Each need to pass to proceed."
         yarn outdated @gyg/orm-types
+        echo "::notice title=ORM-TYPES::@gyg/orm-types is up to date"
         sudo apt update
         sudo apt-get install -y openvpn
         echo "${{ inputs.vpn_profile }}" > /tmp/vpn_profile.ovpn
