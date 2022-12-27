@@ -22,36 +22,36 @@ runs:
       run: |
         if [ '${{ inputs.gyg_env }}' == 'prod' ];
         then 
-          echo '::set-output name=vpn_profile_secret_key::VPN_PROFILE_PROD';
+          echo "vpn_profile_secret_key=VPN_PROFILE_PROD" >> $GITHUB_OUTPUT
           if [ '${{ inputs.gyg_region }}' == 'australia' ];
           then
-            echo '::set-output name=db_username_secret_key::DB_USERNAME_PROD_AUSTRALIA';
-            echo '::set-output name=db_password_secret_key::DB_PASSWORD_PROD_AUSTRALIA';
-            echo '::set-output name=db_host_secret_key::DB_HOST_PROD_AUSTRALIA'
+            echo "db_username_secret_key=DB_USERNAME_PROD_AUSTRALIA" >> $GITHUB_OUTPUT
+            echo "db_password_secret_key=DB_PASSWORD_PROD_AUSTRALIA" >> $GITHUB_OUTPUT
+            echo "db_host_secret_key=DB_HOST_PROD_AUSTRALIA" >> $GITHUB_OUTPUT
           elif [ '${{ inputs.gyg_region }}' == 'usa' ];
           then
-            echo '::set-output name=db_username_secret_key::DB_USERNAME_PROD_USA';
-            echo '::set-output name=db_password_secret_key::DB_PASSWORD_PROD_USA';
-            echo '::set-output name=db_host_secret_key::DB_HOST_PROD_USA';
+            echo "db_username_secret_key=DB_USERNAME_PROD_USA" >> $GITHUB_OUTPUT
+            echo "db_password_secret_key=DB_PASSWORD_PROD_USA" >> $GITHUB_OUTPUT
+            echo "db_host_secret_key=DB_HOST_PROD_USA" >> $GITHUB_OUTPUT
           fi
         else
-          echo '::set-output name=vpn_profile_secret_key::VPN_PROFILE';
-          echo '::set-output name=db_username_secret_key::DB_USERNAME';
-          echo '::set-output name=db_password_secret_key::DB_PASSWORD';
+          echo "vpn_profile_secret_key=VPN_PROFILE" >> $GITHUB_OUTPUT
+          echo "db_username_secret_key=DB_USERNAME" >> $GITHUB_OUTPUT
+          echo "db_password_secret_key=DB_PASSWORD" >> $GITHUB_OUTPUT
           if [ '${{ inputs.gyg_env }}' == 'staging' ];
           then
             if [ '${{ inputs.gyg_region }}' == 'australia' ];
-            then echo '::set-output name=db_host_secret_key::DB_HOST_STAGING_AUSTRALIA';
+            then echo "db_host_secret_key=DB_HOST_STAGING_AUSTRALIA" >> $GITHUB_OUTPUT
             elif [ '${{ inputs.gyg_region }}' == 'usa' ];
-            then echo '::set-output name=db_host_secret_key::DB_HOST_STAGING_USA';
+            then echo "db_host_secret_key=DB_HOST_STAGING_USA" >> $GITHUB_OUTPUT
             fi
           fi
           if [ '${{ inputs.gyg_env }}' == 'test' ];
           then
             if [ '${{ inputs.gyg_region }}' == 'australia' ];
-            then echo '::set-output name=db_host_secret_key::DB_HOST_TEST_AUSTRALIA';
+            then echo "db_host_secret_key=DB_HOST_TEST_AUSTRALIA" >> $GITHUB_OUTPUT
             elif [ '${{ inputs.gyg_region }}' == 'usa' ];
-            then echo '::set-output name=db_host_secret_key::DB_HOST_TEST_USA';
+            then echo "db_host_secret_key=DB_HOST_TEST_USA" >> $GITHUB_OUTPUT
             fi
           fi
         fi

@@ -31,5 +31,5 @@ runs:
         EOF
         npm install -g yamljs
         matrix=$(yaml2json matrix.yaml)
-        echo "::set-output name=matrix::$matrix"
+        echo "matrix=$matrix" >> $GITHUB_OUTPUT
       shell: bash
