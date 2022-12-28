@@ -22,7 +22,7 @@ runs:
       run: |
         if [ '${{ inputs.gyg_env }}' == 'prod' ];
         then 
-          echo 'vpn_profile_secret_key=VPN_PROFILE_PROD' >> $GITHUB_OUTPUT
+          echo 'vpn_profile_secret_key=VPN_PROFILE_PROD' >> $GITHUB_OUTPUT;
           if [ '${{ inputs.gyg_region }}' == 'australia' ];
           then
             echo 'db_username_secret_key=DB_USERNAME_PROD_AUSTRALIA' >> $GITHUB_OUTPUT;
