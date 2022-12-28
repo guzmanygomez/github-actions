@@ -14,5 +14,5 @@ runs:
         echo "[Github Action] Updated version: ${VERSION}"
         yarn publish --non-interactive
         git push
-        echo "::set-output name=version::$(echo $VERSION)"
+        echo "version=$(echo $VERSION)" >> $GITHUB_OUTPUT
       shell: bash
