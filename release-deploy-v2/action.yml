@@ -1,0 +1,63 @@
+name: "Release deploy in Singapore test enviroment"
+description: "download packages and deploy in Singapore test enviroment"
+inputs:
+  gyg_env:
+    required: true
+  gyg_region:
+    required: true
+  version:
+    required: true
+  slack_webhook:
+    required: true
+  deploy_suffix:
+    required: false
+  working_directory:
+    required: false
+    default: '.'
+  prefix_region:
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        if ! [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+[\-0-9a-zA-z\.]*$ ]];
+        then
+          echo "version needs to be of format v*.*.* where * is a digit. e.g. v0.3.2";
+          echo "optionally version can have the branch suffixed v*.*.*-branch-name.0";
+          exit 1;
+        fi
+      shell: bash
+    - run: |
+        echo ${{ github.token }} | gh auth login --with-token
+        zipName="*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.prefix_region }}-${{ inputs.version }}.zip"
+        msg="Downloading artifact '$zipName' for deployment"
+        echo $msg
+        gh release download -p $zipName ${{ inputs.version }}
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+    - env:
+        GYG_ENV: ${{ inputs.gyg_env }}
+        GYG_REGION: ${{ inputs.gyg_region }}
+        RELEASE_VERSION: ${{ inputs.version }}
+        PREFIX_REGION: ${{ inputs.prefix_region }}
+      run: |
+        if [[ "${{ inputs.deploy_suffix }}" == "" ]];
+        then
+          yarn release:diff || true
+          yarn release:deploy
+        else
+          yarn release:diff:${{ inputs.deploy_suffix }} || true
+          yarn release:deploy:${{ inputs.deploy_suffix }}
+        fi
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+    - name: Slack Notification
+      uses: rtcamp/action-slack-notify@v2
+      env:
+          SLACK_CHANNEL: gyg
+          SLACK_COLOR: ${{ job.status }}
+          SLACK_TITLE: 'Deploying ${{ github.event.repository.name }} ${{ inputs.version }} to ${{ inputs.gyg_env }}_${{ inputs.gyg_region }}'
+          SLACK_MESSAGE: 'Deployment successful.'
+          SLACK_USERNAME: Github
+          SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
+    
