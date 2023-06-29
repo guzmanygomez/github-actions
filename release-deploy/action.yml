@@ -13,6 +13,9 @@ inputs:
     required: true
   deploy_suffix:
     required: false
+  notify_slack:
+    required: false
+    default: true
   working_directory:
     required: false
     default: '.'    
@@ -51,6 +54,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working_directory }}
     - name: Slack Notification
+      if: ${{ inputs.notify_slack == 'true' }}
       uses: rtcamp/action-slack-notify@v2
       env:
           SLACK_CHANNEL: ${{ inputs.slack_channel }}
