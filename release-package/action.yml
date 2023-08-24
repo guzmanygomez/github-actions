@@ -15,17 +15,19 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Modify version
-      id: modify_version
-      run: |
-        modified_version=${{ inputs.version//\//-}}
-        echo "::set-output name=modified_version::$modified_version"
+    - run: |
+        if ! [[ "${{ inputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+[\-0-9a-zA-z\.]*$ ]];
+        then
+          echo "version needs to be of format v*.*.* where * is a digit. e.g. v0.3.2";
+          echo "optionally version can have the branch suffixed v*.*.*-branch-name.0";
+          exit 1;
+        fi
       shell: bash
       working-directory: ${{ inputs.working_directory }}
     - env:
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
-        RELEASE_VERSION: ${{ steps.modify_version.outputs.modified_version }}
+        RELEASE_VERSION: ${{ inputs.version }}
         BRANCH: ${{ inputs.branch }}
       run: |
         yarn release:build
@@ -33,8 +35,8 @@ runs:
       working-directory: ${{ inputs.working_directory }}
     - run: |
         echo ${{ github.token }} | gh auth login --with-token
-        artifacts=*.zip; msg="Uploading $artifacts to release ${{ steps.modify_version.outputs.modified_version }}"
+        artifacts=*.zip; msg="Uploading $artifacts to release ${{ inputs.version }}"
         echo $msg
-        gh release upload ${{ steps.modify_version.outputs.modified_version }} *.zip
+        gh release upload ${{ inputs.version }} *.zip
       shell: bash
       working-directory: ${{ inputs.working_directory }}
