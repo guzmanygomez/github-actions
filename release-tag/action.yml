@@ -21,9 +21,9 @@ runs:
         fi
       shell: bash
     - run: |
-        echo "blabla"
-        echo "thebranch is '${{ inputs.branch }}' blah"
-        modified_branch=${{ inputs.branch//\//- }}
+        echo "renaming branch '${{ inputs.branch }}' for versioning"
+#        modified_branch=${{ inputs.branch//\//- }}
+        modified_branch=${{ inputs.branch }}
         echo "::set-env name=MODIFIED_BRANCH::$modified_branch"
       id: modify_branch
       shell: bash
