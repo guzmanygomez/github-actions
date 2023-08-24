@@ -24,12 +24,14 @@ runs:
         echo "renaming branch '${{ inputs.branch }}' for versioning"
         original_branch=${{ inputs.branch }}
         modified_branch=${original_branch//\//-}
+        echo "modified branch: $modified_branch"
         echo "MODIFIED_BRANCH=$(echo $modified_branch)" >> $GITHUB_OUTPUT
       id: modify_branch
       shell: bash
     - id: release-version
       run: |
         if [ "${{ inputs.branch }}" != "develop" ]; then
+          echo "preid to use ${{ steps.modify_branch.outputs.MODIFIED_BRANCH }}"
           yarn version --pre${{ inputs.version }} --preid ${{ steps.modify_branch.outputs.MODIFIED_BRANCH }} 
         else
           yarn version --${{ inputs.version }}
