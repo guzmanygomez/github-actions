@@ -22,10 +22,10 @@ runs:
       shell: bash
     - run: |
         echo "blabla"
-        echo "thebranch is '${{ inputs.version }}' blah"
-        modified_branch=${{ inputs.version//\//- }}
+        echo "thebranch is '${{ inputs.branch }}' blah"
+        modified_branch=${{ inputs.branch//\//- }}
         echo "::set-env name=MODIFIED_BRANCH::$modified_branch"
-        id: modify_branch
+      id: modify_branch
       shell: bash
     - id: release-version
       run: |
