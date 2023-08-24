@@ -23,7 +23,7 @@ runs:
     - run: |
         echo "renaming branch '${{ inputs.branch }}' for versioning"
         modified_branch=${{ inputs.branch }}
-        echo "::set-env name=MODIFIED_BRANCH::$modified_branch"
+        echo "MODIFIED_BRANCH=$(echo $modified_branch)" >> $GITHUB_OUTPUT
       id: modify_branch
       shell: bash
     - id: release-version
