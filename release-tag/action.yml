@@ -22,7 +22,8 @@ runs:
       shell: bash
     - run: |
         echo "renaming branch '${{ inputs.branch }}' for versioning"
-        modified_branch=${{ inputs.branch }}
+        original_branch=${{ inputs.branch }}
+        modified_branch=${original_branch//\//-}
         echo "MODIFIED_BRANCH=$(echo $modified_branch)" >> $GITHUB_OUTPUT
       id: modify_branch
       shell: bash
