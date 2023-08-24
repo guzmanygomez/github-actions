@@ -20,10 +20,15 @@ runs:
           exit 1;
         fi
       shell: bash
+    - run: |
+        modified_branch=${{ inputs.branch//\//-}}
+        echo "::set-env name=MODIFIED_BRANCH::$modified_branch"
+        id: modify_branch
+      shell: bash
     - id: release-version
       run: |
         if [ "${{ inputs.branch }}" != "develop" ]; then
-          yarn version --pre${{ inputs.version }} --preid ${{ inputs.branch }} 
+          yarn version --pre${{ inputs.version }} --preid ${{ steps.modify_branch.outputs.MODIFIED_BRANCH }} 
         else
           yarn version --${{ inputs.version }}
         fi
