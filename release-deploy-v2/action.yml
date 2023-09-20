@@ -24,6 +24,7 @@ runs:
         then
           echo "version needs to be of format v*.*.* where * is a digit. e.g. v0.3.2";
           echo "optionally version can have the branch suffixed v*.*.*-branch-name.0";
+          echo "branch name can contain slashes e.g. v*.*.*-feature/BFT123.0";
           exit 1;
         fi
       shell: bash

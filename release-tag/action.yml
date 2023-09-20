@@ -20,17 +20,17 @@ runs:
           exit 1;
         fi
       shell: bash
-    - run: |
+    - id: modify-branch-name
+      run: |
         echo "renaming branch '${{ inputs.branch }}' for version preid"
-        original_branch=${{ inputs.branch }}
-        modified_branch=${original_branch//\//-}
-        echo "MODIFIED_BRANCH=$(echo $modified_branch)" >> $GITHUB_OUTPUT
-      id: modify_branch
+        BRANCH=${{ inputs.branch }}
+        MODIFIED_BRANCH=${BRANCH//\//-}
+        echo "branch=$(echo $MODIFIED_BRANCH)" >> $GITHUB_OUTPUT
       shell: bash
     - id: release-version
       run: |
         if [ "${{ inputs.branch }}" != "develop" ]; then
-          yarn version --pre${{ inputs.version }} --preid ${{ steps.modify_branch.outputs.MODIFIED_BRANCH }} 
+          yarn version --pre${{ inputs.version }} --preid ${{ steps.modify-branch-name.outputs.branch }} 
         else
           yarn version --${{ inputs.version }}
         fi
