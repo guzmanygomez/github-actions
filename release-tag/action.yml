@@ -5,6 +5,8 @@ inputs:
     required: true
   branch:
     required: true
+  bypass_token:
+    required: true
 outputs:
   version: # id of output
     description: "Version number output"
@@ -40,6 +42,6 @@ runs:
         git commit -m "${{ inputs.version }} update - $VERSION" || true
         git push
         git push origin $VERSION
-        echo ${{ github.token }} | gh auth login --with-token
+        echo ${{ inputs.bypass_token }} | gh auth login --with-token
         gh release create $VERSION
       shell: bash
