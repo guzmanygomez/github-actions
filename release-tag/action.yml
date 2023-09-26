@@ -6,7 +6,7 @@ inputs:
   branch:
     required: true
   bypass_token:
-    required: true
+    required: false
 outputs:
   version: # id of output
     description: "Version number output"
@@ -38,10 +38,18 @@ runs:
         fi
         VERSION=v`node -pe "require('./package.json').version"`
         echo "version=$(echo $VERSION)" >> $GITHUB_OUTPUT
+        if [[ "${{ inputs.bypass_token }}" == "" ]];
+        then
+          echo "Using Github Token"
+          echo ${{ github.token }} | gh auth login --with-token
+        else
+          echo "Using Bypass Token"
+          echo ${{ inputs.bypass_token }} | gh auth login --with-token
+        fi        
         git add .
         git commit -m "${{ inputs.version }} update - $VERSION" || true
         git push
         git push origin $VERSION
-        echo ${{ inputs.bypass_token }} | gh auth login --with-token
+        
         gh release create $VERSION
       shell: bash
