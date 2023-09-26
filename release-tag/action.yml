@@ -44,6 +44,7 @@ runs:
           echo ${{ github.token }} | gh auth login --with-token
         else
           echo "Using Bypass Token"
+          git remote set-url origin https://x-access-token:${{ inputs.bypass_token }}@github.com/${{ github.repository }}
           echo ${{ inputs.bypass_token }} | gh auth login --with-token
         fi        
         git add .
