@@ -1,14 +1,3 @@
-# name: "Set up AWS CodeArtifact"
-# description: "Set up Code Artifact in NPM"
-# runs:
-#   using: "composite"
-#   steps:
-#     - run: |
-#         aws codeartifact login --tool npm --repository bhyve --domain gyg-internal-npm-repo 
-#         echo "//gyg-internal-npm-repo-632572904405.d.codeartifact.ap-southeast-2.amazonaws.com/npm/bhyve/:always-auth=true" >> ~/.npmrc
-
-#       shell: bash
-
 name: Check alpha version
 description: "Check if there is a package with alpha version"
 runs:
