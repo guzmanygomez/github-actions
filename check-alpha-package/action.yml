@@ -1,0 +1,31 @@
+name: Check alpha version
+description: "Check if there is a package with alpha version"
+runs:
+  using: "composite"
+  steps:
+    - shell: bash {0}
+      run: |
+        has_alpha=false
+
+        check_alpha_package() {
+            file=$1
+            json_key=$2
+
+            if cat $file | jq ".$json_key" | grep -q "alpha"; then
+                has_alpha=true
+                echo "Alpha package found in $json_key of $file."
+                cat $file | jq ".$json_key" | grep "alpha"
+            fi
+        }
+
+        for file in $(find . -name "package.json" -not -path "*/node_modules/*"); do
+
+            check_alpha_package $file "version"
+            check_alpha_package $file "peerDependencies"
+            check_alpha_package $file "dependencies"
+            check_alpha_package $file "devDependencies"
+        done
+
+        if [ "$has_alpha" = true ]; then
+            exit 1
+        fi
