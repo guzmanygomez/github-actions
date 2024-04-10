@@ -55,7 +55,6 @@ runs:
     - name: Slack Notification
       uses: rtcamp/action-slack-notify@v2
       env:
-          SLACK_CHANNEL: gyg
           SLACK_COLOR: ${{ job.status }}
           SLACK_TITLE: 'Deploying ${{ github.event.repository.name }} ${{ inputs.version }} to ${{ inputs.gyg_env }}_${{ inputs.gyg_region }}'
           SLACK_MESSAGE: 'Deployment successful.'
