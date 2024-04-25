@@ -29,7 +29,7 @@ runs:
       shell: bash
     - id: release-version
       run: |
-        if [ "${{ inputs.branch }}" != "develop" ]; then
+        if [ "${{ inputs.branch }}" != "develop" ] && [ "${{ inputs.branch }}" != "main" ]; then
           yarn version --pre${{ inputs.version }} --preid ${{ steps.modify-branch-name.outputs.branch }} 
         else
           yarn version --${{ inputs.version }}
