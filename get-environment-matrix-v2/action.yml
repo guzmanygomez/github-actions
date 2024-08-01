@@ -1,0 +1,29 @@
+name: "Get Environment Matrix"
+description: "Provides JSON output of the matrix combination of GYG_ENV and GYG_REGION with AWS access keys"
+outputs:
+  matrix: # id of output
+    description: "JSON format environment matrix output"
+    value: ${{ steps.generate-matrix.outputs.matrix }}
+runs:
+  using: "composite"
+  steps:
+    - id: generate-matrix
+      run: |
+        cat << EOF > matrix.yaml
+        gyg_env: [test, staging, prod]
+        gyg_region: [australia, usa, singapore]
+        include:
+          - gyg_env: test
+            AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_TEST
+          - gyg_env: staging
+            AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_STAGING
+          - gyg_env: prod
+            AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_PROD
+        exclude:
+          - gyg_env: prod
+            gyg_region: singapore
+        EOF
+        npm install -g yamljs
+        matrix=$(yaml2json matrix.yaml)
+        echo "matrix=$matrix" >> $GITHUB_OUTPUT
+      shell: bash
