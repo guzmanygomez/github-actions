@@ -53,11 +53,12 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working_directory }}
     - name: Slack Notification
+      if: always()
       uses: rtcamp/action-slack-notify@v2
       env:
           SLACK_COLOR: ${{ job.status }}
           SLACK_TITLE: 'Deploying ${{ github.event.repository.name }} ${{ inputs.version }} to ${{ inputs.gyg_env }}_${{ inputs.gyg_region }}'
-          SLACK_MESSAGE: 'Deployment successful.'
+          SLACK_MESSAGE: 'Deployment ${{ job.status }}'
           SLACK_USERNAME: Github
           SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
     
