@@ -1,0 +1,172 @@
+name: Create Release with artifacts
+run-name: Release "${{ inputs.tag_version }}" version by @${{ github.actor }} from ref="${{ github.ref_name }}"
+
+permissions: write-all
+
+on:
+  workflow_call:
+    inputs:
+      tag_version:
+        description: "Version number type to release (major|minor|patch)"
+        type: string
+        required: true
+    outputs:
+      version:
+        description: "Version of the release"
+        value: ${{ jobs.Tag-Feature.outputs.version  }}
+  workflow_dispatch:
+    inputs:
+      tag_version:
+        description: "Version number type to release (major|minor|patch)"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+
+jobs:
+  Setup-Matrix:
+    runs-on: ubuntu-latest
+
+    outputs:
+      matrix: ${{ steps.get-matrix.outputs.matrix }}
+    steps:
+      - id: get-matrix
+        name: Get Environment Matrix
+        uses: guzmanygomez/github-actions/get-environment-matrix-v2@main
+
+  Check-Matrix:
+    needs: Setup-Matrix
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install json2yaml
+        run: |
+          npm install -g yamljs
+
+      - name: Check matrix definition
+        run: |
+          matrix='${{ needs.Setup-Matrix.outputs.matrix }}'
+          echo $matrix
+          echo $matrix | jq .
+          echo $matrix | json2yaml -d 3 -
+
+  Tag-Feature:
+    needs: Setup-Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag-release.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.BYPASS_TOKEN }}
+
+      - name: Set up git name and email
+        uses: guzmanygomez/github-actions/setup-git-name-and-email@main
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - id: tag-release
+        name: Tag release
+        uses: guzmanygomez/github-actions/release-tag@main
+        with:
+          version: ${{ inputs.tag_version }}
+          branch: ${{ steps.extract_branch.outputs.branch }}
+
+  Release-Feature:
+    needs: [Tag-Feature, Setup-Matrix]
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix: ${{fromJSON(needs.Setup-Matrix.outputs.matrix)}}
+    steps:
+      - name: Pin Node to 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          always-auth: true
+
+      - name: Get yarn cache directory path
+        id: yarn-cache-dir-path
+        run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache@v4
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTION_ROLE_APPS_TEST }}
+          role-session-name: github-action
+          aws-region: ${{ secrets.AWS_CODEARTIFACT_REGION }}
+
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - name: Set up AWS CodeArtifact
+        uses: guzmanygomez/github-actions/code-artifact@main
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.extract_branch.outputs.branch }}
+          token: ${{ secrets.BYPASS_TOKEN }}
+
+      - name: Install AWS CDK globally
+        run: yarn global add aws-cdk@2.157.0
+
+      - name: Install Node Modules
+        run: yarn install --production
+
+      - name: Set up AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets[matrix.AWS_ROLE] }}
+          role-session-name: rolesession
+          aws-region: "ap-southeast-2"
+
+      - name: Build release package
+        uses: guzmanygomez/github-actions/release-package@main
+        env:
+          USE_GLOBAL_CDK: true
+        with:
+          gyg_env: ${{ matrix.gyg_env }}
+          gyg_region: ${{ matrix.gyg_region }}
+          version: ${{ needs.Tag-Feature.outputs.version }}
+
+  Release-Status:
+    needs: [Tag-Feature, Release-Feature]
+    runs-on: ubuntu-latest
+    if: failure()
+    env:
+      ARTIFACT_VERSION: ${{ needs.Tag-Feature.outputs.version }}
+    steps:
+      - name: Extract branch name
+        shell: bash
+        run: echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
+        id: extract_branch
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.extract_branch.outputs.branch }}
+
+      - name: Set Release Title Failure
+        run: |
+          echo "Setting git tag to $ARTIFACT_VERSION-broken"
+          echo ${{ github.token }} | gh auth login --with-token
+          gh release edit $ARTIFACT_VERSION --title $ARTIFACT_VERSION-broken
+        shell: bash
