@@ -1,4 +1,4 @@
-name: Deploy Lower Environments
+name: Deploy Production Environment
 run-name: Deploy to ${{ inputs.gyg_region }} / ${{ inputs.gyg_env }} - ${{ inputs.tag_version }} by @${{ github.actor }}
 
 permissions: write-all
@@ -11,12 +11,12 @@ on:
         required: true
         type: string
       gyg_env:
-        description: "GYG_ENV (test, staging, prod)"
+        description: "GYG_ENV (prod)"
         required: true
-        default: "test"
+        default: "prod"
         type: string
       gyg_region:
-        description: "GYG_REGION (australia, usa, singapore)"
+        description: "GYG_REGION (australia, usa)"
         required: true
         type: string
       ignore_migration_check:
@@ -30,34 +30,33 @@ on:
         description: "Release version to deploy (e.g. v0.0.1, or v0.0.1-branch-name.0)"
         required: true
       gyg_env:
-        description: "GYG_ENV (test, staging)"
+        description: "GYG_ENV (prod)"
         required: true
-        default: "test"
+        default: "prod"
         type: choice
         options:
-          - test
-          - staging
+          - prod
       gyg_region:
-        description: "GYG_REGION (australia, usa, singapore)"
+        description: "GYG_REGION (australia, usa)"
         required: true
         default: "australia"
         type: choice
         options:
           - australia
           - usa
-          - singapore
       ignore_migration_check:
         description: "Ignore migrations check - WARNING, proceed at risk"
         required: true
         default: "false"
         type: choice
         options:
-          - "false"
-          - "true"
+          - false
+          - true
 jobs:
   Setup-Database-Outputs:
     runs-on: ubuntu-latest
-
+    needs:
+      - Manual-Approval
     outputs:
       vpn_profile_secret_key: ${{ steps.get-db-outputs.outputs.vpn_profile_secret_key }}
       db_username_secret_key: ${{ steps.get-db-outputs.outputs.db_username_secret_key }}
@@ -145,19 +144,11 @@ jobs:
           gyg_env: ${{ inputs.gyg_env }}
           gyg_region: ${{ inputs.gyg_region}}
 
-      - name: Set up AWS Test
-        if: ${{ inputs.gyg_env == 'test' }}
+      - name: Set up AWS Prod
+        if: ${{ inputs.gyg_env == 'prod' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_GITHUB_ACTION_ROLE_APPS_TEST }}
-          role-session-name: github-action
-          aws-region: ${{ env.aws_region }}
-
-      - name: Set up AWS Staging
-        if: ${{ inputs.gyg_env == 'staging' }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_GITHUB_ACTION_ROLE_APPS_STAGING }}
+          role-to-assume: ${{ secrets.AWS_GITHUB_ACTION_ROLE_APPS_PROD }}
           role-session-name: github-action
           aws-region: ${{ env.aws_region }}
 
