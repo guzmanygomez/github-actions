@@ -1,0 +1,45 @@
+name: Set up environment for build
+
+permissions: write-all
+
+on:
+  workflow_call:
+
+jobs:
+    Set-Up-Environment-For-Build:
+        runs-on: ubuntu-latest
+        if: ${{ !github.event.pull_request.draft }}
+
+        steps:
+            - name: Pin Node to 18
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 18
+                  always-auth: true
+
+            - name: Set up MySQL
+              uses: guzmanygomez/github-actions/setup-mysql@main
+              with:
+                  username: gyg
+                  password: gyg
+
+            - name: Get yarn cache directory path
+              id: yarn-cache-dir-path
+              run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+            - uses: actions/cache@v4
+              with:
+                  path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+                  key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-yarn-
+
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                role-to-assume: ${{ secrets.AWS_GITHUB_ACTION_ROLE_APPS_TEST }}
+                role-session-name: github-action
+                aws-region: ${{ secrets.AWS_CODEARTIFACT_REGION }}
+          
+            - name: Set up AWS CodeArtifact
+              uses: guzmanygomez/github-actions/code-artifact@main
