@@ -1,0 +1,197 @@
+name: Deploy Lower Environments
+run-name: Deploy to ${{ inputs.gyg_region }} / ${{ inputs.gyg_env }} - ${{ inputs.tag_version }} by @${{ github.actor }}
+
+permissions: write-all
+
+on:
+    workflow_call:
+        inputs:
+            tag_version:
+              description: 'Release version to deploy (e.g. v0.0.1, or v0.0.1-branch-name.0)'
+              required: true
+              type: string
+            gyg_env:
+              description: 'GYG_ENV (test, staging, prod)'
+              required: true
+              default: 'test'
+              type: string
+            gyg_region:
+              description: 'GYG_REGION (australia, usa, singapore)'
+              required: true
+              type: string
+            ignore_migration_check:
+              description: 'Ignore migrations check - WARNING, proceed at risk'
+              required: true
+              default: false 
+              type: boolean
+    workflow_dispatch:
+        inputs:
+            tag_version:
+                description: 'Release version to deploy (e.g. v0.0.1, or v0.0.1-branch-name.0)'
+                required: true
+            gyg_env:
+                description: 'GYG_ENV (test, staging)'
+                required: true
+                default: 'test'
+                type: choice
+                options:
+                - test
+                - staging
+            gyg_region:
+                description: 'GYG_REGION (australia, usa, singapore)'
+                required: true
+                default: 'australia' 
+                type: choice
+                options:
+                - australia
+                - usa
+                - singapore
+            ignore_migration_check:
+                description: 'Ignore migrations check - WARNING, proceed at risk'
+                required: true
+                default: 'false'
+                type: choice
+                options:
+                - false
+                - true
+jobs:
+    Setup-Database-Outputs:
+        runs-on: ubuntu-latest
+
+        outputs:
+            vpn_profile_secret_key: ${{ steps.get-db-outputs.outputs.vpn_profile_secret_key }}
+            db_username_secret_key: ${{ steps.get-db-outputs.outputs.db_username_secret_key }}
+            db_password_secret_key: ${{ steps.get-db-outputs.outputs.db_password_secret_key }}
+            db_host_secret_key: ${{ steps.get-db-outputs.outputs.db_host_secret_key }}
+        steps:
+            - id: get-db-outputs
+              name: Get Database Outputs
+              uses: guzmanygomez/github-actions/get-database-outputs@main
+              with:
+                  gyg_env: ${{ inputs.gyg_env }}
+                  gyg_region: ${{ inputs.gyg_region }}
+
+    Deploy-Feature:
+        needs:
+            - Setup-Database-Outputs
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Pin Node to 18
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 18
+                  always-auth: true
+
+            - name: Get yarn cache directory path
+              id: yarn-cache-dir-path
+              run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+
+            - uses: actions/cache@v4
+              id: yarn-cache
+              with:
+                  path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+                  key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+                  restore-keys: |
+                      ${{ runner.os }}-yarn-
+
+            - name: Set AWS Region
+              id: set-region
+              run: |
+                if [[ "${{ inputs.gyg_region }}" == "australia" ]]; then
+                  echo "aws_region=ap-southeast-2" >> $GITHUB_ENV
+                elif [[ "${{ inputs.gyg_region }}" == "usa" ]]; then
+                  echo "aws_region=us-east-2" >> $GITHUB_ENV
+                elif [[ "${{ inputs.gyg_region }}" == "singapore" ]]; then
+                  echo "aws_region=ap-southeast-1" >> $GITHUB_ENV
+                else
+                  echo "Invalid region specified."
+                  exit 1
+                fi
+
+            - name: Configure AWS Credentials
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                role-to-assume: ${{ secrets.AWS_GITHUB_ACTION_ROLE_APPS_TEST }}
+                role-session-name: github-action
+                aws-region: ${{ env.aws_region }}
+
+            - name: Set up AWS CodeArtifact
+              uses: guzmanygomez/github-actions/code-artifact@main
+              env:
+                AWS_REGION: "ap-southeast-2"
+
+            - name: Extract branch name
+              shell: bash
+              run: echo "branch=$(echo ${GITHUB_REF#refs/heads/})" >> $GITHUB_OUTPUT
+              id: extract_branch
+
+            - uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+                  ref: ${{ steps.extract_branch.outputs.branch }}
+
+            - name: Install Node Modules
+              run: yarn install
+
+            - name: Check migration
+              if: inputs.ignore_migration_check == 'false' && inputs.gyg_env == 'prod'
+              uses: guzmanygomez/github-actions/diff-migrations@main
+              with:
+                  vpn_profile: ${{ secrets[needs.Setup-Database-Outputs.outputs.vpn_profile_secret_key] }}
+                  db_username: ${{ secrets[needs.Setup-Database-Outputs.outputs.db_username_secret_key] }}
+                  db_password: ${{ secrets[needs.Setup-Database-Outputs.outputs.db_password_secret_key] }}
+                  db_host: ${{ secrets[needs.Setup-Database-Outputs.outputs.db_host_secret_key] }}
+                  gyg_env: ${{ inputs.gyg_env }}
+                  gyg_region: ${{ inputs.gyg_region}}
+
+            - name: Set up AWS Test
+              if: ${{ inputs.gyg_env == 'test' }}
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                role-to-assume: ${{ secrets.AWS_GITHUB_ACTION_ROLE_APPS_TEST }}
+                role-session-name: github-action
+                aws-region: ${{ env.aws_region }}
+
+            - name: Set up AWS Staging
+              if: ${{ inputs.gyg_env == 'staging' }}
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                role-to-assume: ${{ secrets.AWS_GITHUB_ACTION_ROLE_APPS_STAGING }}
+                role-session-name: github-action
+                aws-region: ${{ env.aws_region }}
+
+            - uses: chrnorm/deployment-action@v2
+              name: Create GitHub deployment
+              id: deployment
+              with:
+                token: '${{ github.token }}'
+                description: 'Deploying version ${{ inputs.tag_version }} for ${{ github.event.repository.name }}'
+                environment: '${{ inputs.gyg_env }}_${{ inputs.gyg_region }}'
+
+            - name: Deploy release package
+              uses: guzmanygomez/github-actions/release-deploy@main
+              with:
+                  gyg_env: ${{ inputs.gyg_env }}
+                  gyg_region: ${{ inputs.gyg_region }}
+                  version: ${{ inputs.tag_version }}
+                  notify_slack: ${{ inputs.gyg_env == 'prod' }}
+                  slack_channel: ${{ vars.DEPLOYMENT_SLACK_CHANNEL }}
+                  slack_webhook: ${{ vars.DEPLOYMENT_SLACK_WEBHOOK }}
+
+            - name: Update deployment status (success)
+              if: success()
+              uses: chrnorm/deployment-status@v2
+              with:
+                token: '${{ github.token }}'
+                description: 'Deployed successfully version ${{ inputs.tag_version }} for ${{ github.event.repository.name }}'
+                deployment-id: ${{ steps.deployment.outputs.deployment_id }}
+                state: 'success'
+
+            - name: Update deployment status (failure)
+              if: failure()
+              uses: chrnorm/deployment-status@v2
+              with:
+                token: '${{ github.token }}'
+                deployment-id: ${{ steps.deployment.outputs.deployment_id }}
+                state: 'failure'
