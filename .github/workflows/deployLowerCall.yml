@@ -23,7 +23,7 @@ on:
               description: 'Ignore migrations check - WARNING, proceed at risk'
               required: true
               default: false 
-              type: boolean
+              type: string
     workflow_dispatch:
         inputs:
             tag_version:
@@ -52,8 +52,8 @@ on:
                 default: 'false'
                 type: choice
                 options:
-                - false
-                - true
+                - 'false'
+                - 'true'
 jobs:
     Setup-Database-Outputs:
         runs-on: ubuntu-latest
