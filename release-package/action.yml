@@ -1,6 +1,9 @@
 name: "Release package"
 description: "create and upload packages"
 inputs:
+  gyg_platform:
+    default: apps
+    required: false
   gyg_env:
     required: true
   gyg_region:
@@ -27,6 +30,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working_directory }}
     - env:
+        GYG_PLATFORM: ${{ inputs.gyg_platform }}
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
         RELEASE_VERSION: ${{ inputs.version }}
