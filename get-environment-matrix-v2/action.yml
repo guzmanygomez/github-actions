@@ -14,12 +14,16 @@ runs:
         gyg_region: [australia, usa, singapore]
         include:
           - gyg_env: test
+            GYG_PLATFORM: apps
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_TEST
           - gyg_env: staging
+            GYG_PLATFORM: apps
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_STAGING
           - gyg_env: prod
+            GYG_PLATFORM: apps
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_PROD
           - gyg_env: dr
+            GYG_PLATFORM: dr
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_DR
         exclude:
           - gyg_env: prod
