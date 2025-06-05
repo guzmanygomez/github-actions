@@ -34,6 +34,12 @@ runs:
             echo 'db_password_secret_key=DB_PASSWORD_PROD_USA' >> $GITHUB_OUTPUT;
             echo 'db_host_secret_key=DB_HOST_PROD_USA' >> $GITHUB_OUTPUT;
           fi
+        elif [ '${{ inputs.gyg_env }}' == 'dr' ];
+        then
+          echo 'vpn_profile_secret_key=VPN_PROFILE_PROD' >> $GITHUB_OUTPUT;
+          echo 'db_username_secret_key=DB_USERNAME_PROD_AUSTRALIA' >> $GITHUB_OUTPUT;
+          echo 'db_password_secret_key=DB_PASSWORD_PROD_AUSTRALIA' >> $GITHUB_OUTPUT;
+          echo 'db_host_secret_key=DB_HOST_DR_AUSTRALIA' >> $GITHUB_OUTPUT;
         else
           echo 'vpn_profile_secret_key=VPN_PROFILE' >> $GITHUB_OUTPUT;
           echo 'db_username_secret_key=DB_USERNAME' >> $GITHUB_OUTPUT;
