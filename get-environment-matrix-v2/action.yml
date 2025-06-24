@@ -20,9 +20,10 @@ runs:
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_STAGING
           - gyg_env: prod
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_PROD
-          - gyg_env: prod
-            gyg_platform: dr
-            AWS_ROLE: AWS_GITHUB_ACTION_ROLE_DR
+          - gyg_platform: dr
+            gyg_env: prod
+            gyg_region: australia
+            AWS_ROLE: AWS_GITHUB_ACTION_ROLE_DR_PROD
         EOF
         npm install -g yamljs
         matrix=$(yaml2json matrix.yaml)
