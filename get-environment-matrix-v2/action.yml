@@ -24,6 +24,10 @@ runs:
             gyg_env: prod
             gyg_region: australia
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_DR
+        exclude:
+          - gyg_platform: apps
+            gyg_env: prod
+            gyg_region: singapore
         EOF
         npm install -g yamljs
         matrix=$(yaml2json matrix.yaml)
