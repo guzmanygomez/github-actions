@@ -10,28 +10,20 @@ runs:
     - id: generate-matrix
       run: |
         cat << EOF > matrix.yaml
-        gyg_env: [test, staging, prod, dr]
+        gyg_platform: [apps]
+        gyg_env: [test, staging, prod]
         gyg_region: [australia, usa, singapore]
         include:
           - gyg_env: test
-            GYG_PLATFORM: apps
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_TEST
           - gyg_env: staging
-            GYG_PLATFORM: apps
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_STAGING
           - gyg_env: prod
-            GYG_PLATFORM: apps
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_PROD
-          - gyg_env: dr
-            GYG_PLATFORM: dr
+          - gyg_platform: dr
+            gyg_env: prod
+            gyg_region: australia
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_DR
-        exclude:
-          - gyg_env: prod
-            gyg_region: singapore
-          - gyg_env: dr
-            gyg_region: singapore
-          - gyg_env: dr
-            gyg_region: usa
         EOF
         npm install -g yamljs
         matrix=$(yaml2json matrix.yaml)

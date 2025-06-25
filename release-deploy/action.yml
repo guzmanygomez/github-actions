@@ -1,6 +1,9 @@
 name: "Release deploy"
 description: "download packages and deploy"
 inputs:
+  gyg_platform:
+    required: false
+    default: 'apps'
   gyg_env:
     required: true
   gyg_region:
@@ -40,6 +43,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working_directory }}
     - env:
+        GYG_PLATFORM: ${{ inputs.gyg_platform }}
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
         RELEASE_VERSION: ${{ inputs.version }}
@@ -59,7 +63,7 @@ runs:
       uses: rtcamp/action-slack-notify@v2
       env:
           SLACK_COLOR: ${{ job.status }}
-          SLACK_TITLE: 'Deploying ${{ github.event.repository.name }} ${{ inputs.version }} to ${{ inputs.gyg_env }}_${{ inputs.gyg_region }}'
+          SLACK_TITLE: 'Deploying ${{ github.event.repository.name }} ${{ inputs.version }} to ${{ inputs.gyg_platform }}_${{ inputs.gyg_env }}_${{ inputs.gyg_region }}'
           SLACK_MESSAGE: 'Deployment successful.'
           SLACK_USERNAME: Github
           SLACK_WEBHOOK: ${{ inputs.slack_webhook }}
