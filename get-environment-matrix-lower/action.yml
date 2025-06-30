@@ -1,5 +1,10 @@
 name: "Get Environment Matrix Lower"
 description: "Provides JSON output of the matrix combination of GYG_ENV and GYG_REGION with AWS access keys"
+inputs:
+  gyg_env:
+    required: true
+  gyg_region:
+    required: true
 outputs:
   matrix: # id of output
     description: "JSON format environment matrix output"
@@ -11,13 +16,11 @@ runs:
       run: |
         cat << EOF > matrix.yaml
         gyg_platform: [apps]
-        gyg_env: [test, staging]
-        gyg_region: [australia, usa, singapore]
+        gyg_env: [${{ inputs.gyg_env }}]
+        gyg_region: [${{ inputs.gyg_region }}]
         include:
-          - gyg_env: test
-            AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_TEST
-          - gyg_env: staging
-            AWS_ROLE: AWS_GITHUB_ACTION_ROLE_APPS_STAGING
+          - gyg_env: ${{ inputs.gyg_env }}
+            AWS_ROLE: ${{ inputs.gyg_env == 'test' && 'AWS_GITHUB_ACTION_ROLE_APPS_TEST' || 'AWS_GITHUB_ACTION_ROLE_APPS_STAGING' }}
         EOF
         npm install -g yamljs
         matrix=$(yaml2json matrix.yaml)
