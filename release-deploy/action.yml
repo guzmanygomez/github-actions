@@ -21,7 +21,9 @@ inputs:
     default: true
   working_directory:
     required: false
-    default: '.'    
+    default: '.'
+  cdk_deploy_mode:
+    required: false
 runs:
   using: "composite"
   steps:
@@ -47,6 +49,7 @@ runs:
         GYG_ENV: ${{ inputs.gyg_env }}
         GYG_REGION: ${{ inputs.gyg_region }}
         RELEASE_VERSION: ${{ inputs.version }}
+        CDK_DEPLOY_MODE: ${{ inputs.cdk_deploy_mode }}
       run: |
         if [[ "${{ inputs.deploy_suffix }}" == "" ]];
         then
