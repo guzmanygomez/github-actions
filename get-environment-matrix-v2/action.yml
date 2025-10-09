@@ -24,6 +24,10 @@ runs:
             gyg_env: prod
             gyg_region: australia
             AWS_ROLE: AWS_GITHUB_ACTION_ROLE_DR
+          - gyg_platform: dr
+            gyg_env: prod
+            gyg_region: usa
+            AWS_ROLE: AWS_GITHUB_ACTION_ROLE_DR            
         exclude:
           - gyg_platform: apps
             gyg_env: prod
