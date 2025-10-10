@@ -11,7 +11,7 @@ runs:
       run: |
         cat << EOF > matrix.yaml
         gyg_env: [test, staging, prod]
-        gyg_region: [australia, usa, singapore]
+        gyg_region: [australia, usa]
         include:
           - gyg_env: test
             AWS_KEY: AWS_TEST_DEPLOY_KEY
@@ -25,9 +25,6 @@ runs:
             AWS_KEY: AWS_PRODUCTION_DEPLOY_KEY
             AWS_SECRET: AWS_PRODUCTION_DEPLOY_SECRET
             AWS_REGION: AWS_PRODUCTION_DEPLOY_REGION
-        exclude:
-          - gyg_env: prod
-            gyg_region: singapore
         EOF
         npm install -g yamljs
         matrix=$(yaml2json matrix.yaml)
