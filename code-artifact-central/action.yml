@@ -1,0 +1,10 @@
+name: "Set up AWS CodeArtifact Central"
+description: "Set up Code Artifact in NPM"
+runs:
+  using: "composite"
+  steps:
+    - run: |
+        aws codeartifact login --tool npm --repository bhyve --domain gyg-internal-npm-repo 
+        echo "//gyg-internal-npm-repo-044879682034.d.codeartifact.ap-southeast-2.amazonaws.com/npm/bhyve/:always-auth=true" >> ~/.npmrc
+
+      shell: bash
