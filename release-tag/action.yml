@@ -20,6 +20,13 @@ runs:
           exit 1;
         fi
       shell: bash
+    - name: Check branch name for underscores
+      run: |
+        if [[ "${{ inputs.branch }}" == *_* ]]; then
+          echo "::error::Branch name '${{ inputs.branch }}' contains '_'. Feature branches must use hyphens (-) instead of underscores."
+          exit 1
+        fi
+      shell: bash
     - id: modify-branch-name
       run: |
         echo "renaming branch '${{ inputs.branch }}' for version preid"
