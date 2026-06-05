@@ -16,6 +16,10 @@ inputs:
     default: '.'
   prefix_region:
     required: true
+  token:
+    description: "GitHub token (PAT) used to authenticate gh operations"
+    required: false
+    default: ${{ github.token }}
 runs:
   using: "composite"
   steps:
@@ -30,12 +34,14 @@ runs:
         fi
       shell: bash
     - run: |
-        echo ${{ github.token }} | gh auth login --with-token
+        echo ${{ inputs.token }} | gh auth login --with-token
         zipName="*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.prefix_region }}-${{ inputs.version }}.zip"
         msg="Downloading artifact '$zipName' for deployment"
         echo $msg
         gh release download -p $zipName ${{ inputs.version }}
       shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
       working-directory: ${{ inputs.working_directory }}
     - env:
         GYG_ENV: ${{ inputs.gyg_env }}

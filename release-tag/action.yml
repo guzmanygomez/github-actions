@@ -5,6 +5,10 @@ inputs:
     required: true
   branch:
     required: true
+  token:
+    description: "GitHub token (PAT) used to authenticate git and gh operations"
+    required: false
+    default: ${{ github.token }}
 outputs:
   version: # id of output
     description: "Version number output"
@@ -43,10 +47,13 @@ runs:
         fi
         VERSION=v`node -pe "require('./package.json').version"`
         echo "version=$(echo $VERSION)" >> $GITHUB_OUTPUT
+        echo ${{ inputs.token }} | gh auth login --with-token
+        gh auth setup-git
         git add .
         git commit -m "${{ inputs.version }} update - $VERSION" || true
         git push
         git push origin $VERSION
-        echo ${{ github.token }} | gh auth login --with-token
         gh release create $VERSION
       shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
