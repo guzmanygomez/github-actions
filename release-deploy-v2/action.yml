@@ -34,7 +34,6 @@ runs:
         fi
       shell: bash
     - run: |
-        echo ${{ inputs.token }} | gh auth login --with-token
         zipName="*-${{ inputs.gyg_env }}-${{ inputs.gyg_region }}-${{ inputs.prefix_region }}-${{ inputs.version }}.zip"
         msg="Downloading artifact '$zipName' for deployment"
         echo $msg

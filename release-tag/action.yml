@@ -47,7 +47,6 @@ runs:
         fi
         VERSION=v`node -pe "require('./package.json').version"`
         echo "version=$(echo $VERSION)" >> $GITHUB_OUTPUT
-        echo ${{ inputs.token }} | gh auth login --with-token
         gh auth setup-git
         git add .
         git commit -m "${{ inputs.version }} update - $VERSION" || true
