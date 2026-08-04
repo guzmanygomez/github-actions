@@ -30,11 +30,6 @@ runs:
             echo 'db_username_secret_key=DB_USERNAME_PROD_AUSTRALIA' >> $GITHUB_OUTPUT;
             echo 'db_password_secret_key=DB_PASSWORD_PROD_AUSTRALIA' >> $GITHUB_OUTPUT;
             echo 'db_host_secret_key=DB_HOST_DR_AUSTRALIA' >> $GITHUB_OUTPUT;
-          elif [ '${{ inputs.gyg_region }}' == 'usa' ];
-          then
-            echo 'db_username_secret_key=DB_USERNAME_PROD_USA' >> $GITHUB_OUTPUT;
-            echo 'db_password_secret_key=DB_PASSWORD_PROD_USA' >> $GITHUB_OUTPUT;
-            echo 'db_host_secret_key=DB_HOST_DR_USA' >> $GITHUB_OUTPUT;
           fi
         else
           if [ '${{ inputs.gyg_env }}' == 'prod' ];
@@ -45,11 +40,6 @@ runs:
               echo 'db_username_secret_key=DB_USERNAME_PROD_AUSTRALIA' >> $GITHUB_OUTPUT;
               echo 'db_password_secret_key=DB_PASSWORD_PROD_AUSTRALIA' >> $GITHUB_OUTPUT;
               echo 'db_host_secret_key=DB_HOST_PROD_AUSTRALIA' >> $GITHUB_OUTPUT;
-            elif [ '${{ inputs.gyg_region }}' == 'usa' ];
-            then
-              echo 'db_username_secret_key=DB_USERNAME_PROD_USA' >> $GITHUB_OUTPUT;
-              echo 'db_password_secret_key=DB_PASSWORD_PROD_USA' >> $GITHUB_OUTPUT;
-              echo 'db_host_secret_key=DB_HOST_PROD_USA' >> $GITHUB_OUTPUT;
             fi
           else
             echo 'vpn_profile_secret_key=VPN_PROFILE' >> $GITHUB_OUTPUT;
@@ -59,16 +49,12 @@ runs:
             then
               if [ '${{ inputs.gyg_region }}' == 'australia' ];
               then echo 'db_host_secret_key=DB_HOST_STAGING_AUSTRALIA' >> $GITHUB_OUTPUT;
-              elif [ '${{ inputs.gyg_region }}' == 'usa' ];
-              then echo 'db_host_secret_key=DB_HOST_STAGING_USA' >> $GITHUB_OUTPUT;
               fi
             fi
             if [ '${{ inputs.gyg_env }}' == 'test' ];
             then
               if [ '${{ inputs.gyg_region }}' == 'australia' ];
               then echo 'db_host_secret_key=DB_HOST_TEST_AUSTRALIA' >> $GITHUB_OUTPUT;
-              elif [ '${{ inputs.gyg_region }}' == 'usa' ];
-              then echo 'db_host_secret_key=DB_HOST_TEST_USA' >> $GITHUB_OUTPUT;
               fi
             fi
           fi
