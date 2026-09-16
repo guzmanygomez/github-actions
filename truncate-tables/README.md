@@ -22,8 +22,13 @@ is done.
   found, that table is marked `BLOCKED` and skipped rather than truncated.
 - **Fail-closed.** If `fail_on_block: true` (default) and any table is
   blocked, or a listed table doesn't exist, the job exits non-zero.
-- **Slack alerting.** Posts a summary to the configured Slack channel on both
-  success and failure.
+- **Slack alerting.** The action itself does not call Slack - it emits
+  `status` (`success`/`failure`) and `summary` outputs. The caller workflow
+  posts these to Slack via [`rtcamp/action-slack-notify`](https://github.com/rtcamp/action-slack-notify),
+  the same pattern used elsewhere in GYG's workflows (see
+  [`selfServiceGrantDBAccess.yml`](https://github.com/guzmanygomez/bhyve-platform-management/blob/main/.github/workflows/selfServiceGrantDBAccess.yml#L175)).
+  This keeps Slack config/credentials entirely in the caller workflow, not in
+  this action or its Python code.
 
 ## Inputs
 
@@ -37,7 +42,13 @@ is done.
 | `db_password`         | yes      | -       | pass via `secrets.*`                                          |
 | `config_path`         | yes      | -       | path to the allowlist YAML, in the caller repo's checkout      |
 | `dry_run`             | no       | `"true"`| set to `"false"` only after the checklist below is complete   |
-| `slack_webhook_url`   | no       | `""`    | pass via `secrets.*`                                          |
+
+## Outputs
+
+| Output    | Description                                                                 |
+|-----------|-------------------------------------------------------------------------------|
+| `status`  | `success` or `failure` - use it to pick the Slack message color/pass/fail icon |
+| `summary` | One line per allowlisted table: its result (dry-run/truncated/blocked/error) and detail |
 
 ## Allowlist config format
 
@@ -45,8 +56,6 @@ See [`config/tables.example.yml`](./config/tables.example.yml):
 
 ```yaml
 fail_on_block: true
-slack:
-  channel: "#data-retention-alerts"
 tables:
   - schema: public
     name: example_audit_log
@@ -57,14 +66,22 @@ tables:
 `schema` is used for Postgres; it's ignored for MySQL (MySQL uses `db_name`
 from the action inputs as the database/schema).
 
-## Example caller workflow (in the target application repo, not here)
+## Sample workflow (in the target application repo, not here)
+
+This is a complete, runnable example of a caller workflow: it schedules the
+job, checks out the config, calls this action, and reports the result to
+Slack whether the run succeeds or fails.
+
+`.github/workflows/purge-expired-records.yml`:
 
 ```yaml
 name: Purge expired records
 
 on:
+  # Every Monday at 03:00 UTC.
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "0 3 * * 1"
+  # Allows a manual, on-demand run (e.g. to re-check after fixing a blocked table).
   workflow_dispatch: {}
 
 jobs:
@@ -73,9 +90,17 @@ jobs:
     # Required-reviewer gate lives on this GitHub Environment, configured in
     # the target repo's settings - this action does not enforce it itself.
     environment: prod-db-purge
+    env:
+      # Flip to "false" only once the "Before enabling against prod"
+      # checklist below is fully done for this repo/environment.
+      DRY_RUN: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: gyg/github-actions/truncate-tables@main
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Truncate allowlisted tables
+        id: truncate
+        uses: gyg/github-actions/truncate-tables@main
         with:
           db_engine: postgres
           db_host: ${{ secrets.RETENTION_DB_HOST }}
@@ -84,9 +109,50 @@ jobs:
           db_username: ${{ secrets.RETENTION_DB_USERNAME }}
           db_password: ${{ secrets.RETENTION_DB_PASSWORD }}
           config_path: .github/truncate-tables.yml
-          dry_run: "true"
-          slack_webhook_url: ${{ secrets.SLACK_RETENTION_WEBHOOK_URL }}
+          dry_run: ${{ env.DRY_RUN }}
+
+      # `if: always()` so this still runs (and reports failure) even if the
+      # truncate step above failed or was blocked.
+      - name: Notify Slack
+        if: always()
+        uses: rtcamp/action-slack-notify@v2
+        env:
+          SLACK_CHANNEL: data-retention-alerts
+          SLACK_COLOR: ${{ steps.truncate.outputs.status == 'success' && 'good' || 'danger' }}
+          SLACK_TITLE: "Purge expired records - ${{ steps.truncate.outputs.status || 'failure' }}"
+          SLACK_MESSAGE: |
+            *Workflow:* ${{ github.workflow }}
+            *Repo:* ${{ github.repository }}
+            *Dry run:* ${{ env.DRY_RUN }}
+            *Run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            ${{ steps.truncate.outputs.summary }}
+          SLACK_USERNAME: Github
+          SLACK_WEBHOOK: ${{ secrets.SLACK_RETENTION_WEBHOOK_URL }}
 ```
+
+`.github/truncate-tables.yml` (the allowlist config referenced above):
+
+```yaml
+fail_on_block: true
+tables:
+  - schema: public
+    name: example_audit_log
+  - schema: public
+    name: example_session_logs
+```
+
+Other things a real deployment needs, beyond the two files above:
+
+- `RETENTION_DB_HOST`, `RETENTION_DB_NAME`, `RETENTION_DB_USERNAME`,
+  `RETENTION_DB_PASSWORD` and `SLACK_RETENTION_WEBHOOK_URL` registered as
+  repo/environment secrets - never hardcoded in the workflow.
+- The `prod-db-purge` GitHub Environment created in the target repo's
+  settings, with required reviewers, before the workflow can run against
+  prod.
+- A dedicated, least-privilege DB user for `RETENTION_DB_USERNAME` that can
+  only `SELECT` (for the checks) and `TRUNCATE` on the allowlisted tables -
+  not an admin/app credential.
 
 ## Before enabling against prod
 

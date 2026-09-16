@@ -9,10 +9,6 @@
 # that make truncation unsafe). Recommended: true.
 fail_on_block: true
 
-slack:
-  # Channel to post success/failure notifications to.
-  channel: "#data-retention-alerts"
-
 tables:
   # `schema` is used as the Postgres schema name, or ignored for MySQL
   # (MySQL uses `db_name` from the action inputs as the database/schema).

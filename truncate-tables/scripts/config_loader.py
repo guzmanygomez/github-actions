@@ -20,7 +20,6 @@ class TableEntry:
 class Config:
     tables: list[TableEntry]
     fail_on_block: bool
-    slack_channel: str
 
 
 def load_config(path: str) -> Config:
@@ -46,10 +45,7 @@ def load_config(path: str) -> Config:
         seen.add(key)
         tables.append(TableEntry(schema=schema, name=name))
 
-    slack_channel = (raw.get("slack") or {}).get("channel", "")
-
     return Config(
         tables=tables,
         fail_on_block=bool(raw.get("fail_on_block", True)),
-        slack_channel=slack_channel,
     )

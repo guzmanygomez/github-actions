@@ -20,8 +20,6 @@ def test_load_valid_config():
     path = write_config(
         """
         fail_on_block: true
-        slack:
-          channel: "#alerts"
         tables:
           - schema: public
             name: example_audit_log
@@ -29,7 +27,6 @@ def test_load_valid_config():
     )
     config = load_config(path)
     assert config.fail_on_block is True
-    assert config.slack_channel == "#alerts"
     assert len(config.tables) == 1
     assert config.tables[0].name == "example_audit_log"
 
