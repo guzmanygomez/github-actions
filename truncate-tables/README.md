@@ -11,8 +11,9 @@ is done.
 
 ## Safety model
 
-- **Explicit allowlist only.** Tables are listed by name in a YAML config
-  checked into the calling repo. There is no wildcard or dynamic discovery.
+- **Explicit allowlist only.** Tables are listed by name (with their own
+  database/schema) in a YAML config checked into the calling repo. There is
+  no wildcard or dynamic discovery.
 - **Dry-run by default.** `dry_run` defaults to `"true"`. In dry-run mode the
   action logs which tables and row counts would be affected and truncates
   nothing.
@@ -37,11 +38,16 @@ is done.
 | `db_engine`           | yes      | -       | `mysql` or `postgres`                                        |
 | `db_host`             | yes      | -       | pass via `secrets.*` in the caller workflow                  |
 | `db_port`             | yes      | -       |                                                                 |
-| `db_name`             | yes      | -       | database name (mysql) / database to connect to (postgres)     |
-| `db_username`         | yes      | -       | pass via `secrets.*`                                          |
+| `db_username`         | yes      | -       | pass via `secrets.*` - one login used for every table below   |
 | `db_password`         | yes      | -       | pass via `secrets.*`                                          |
 | `config_path`         | yes      | -       | path to the allowlist YAML, in the caller repo's checkout      |
 | `dry_run`             | no       | `"true"`| set to `"false"` only after the checklist below is complete   |
+
+There is no `db_name`/`db_schema` input. Each table entry in the allowlist
+config names its own `database` (and `schema` for Postgres), so one run - one
+login - can cover multiple databases/schemas on the same server. If your
+target tables live under different logins entirely, run the action once per
+login/config.
 
 ## Outputs
 
@@ -52,20 +58,26 @@ is done.
 
 ## Allowlist config format
 
-`schema` is used for Postgres; it's omitted/ignored for MySQL (MySQL uses
-`db_name` from the action inputs as the database/schema). A single config
-targets a single `db_engine`, matching the single DB connection the action
-makes per run.
+Every table entry declares its own `database` (required) and, for Postgres,
+`schema` (optional, defaults to `public`) - it's a Postgres-only concept and
+is omitted for MySQL. The action opens one connection per table using that
+table's `database`, so a single config (and single `db_engine`/login) can
+span multiple databases/schemas on the same server.
 
 Postgres - see [`config/tables.postgres.example.yml`](./config/tables.postgres.example.yml):
 
 ```yaml
 fail_on_block: true
 tables:
-  - schema: public
+  - database: analytics
+    schema: public
     name: example_audit_log
-  - schema: public
+  - database: analytics
+    schema: public
     name: example_session_logs
+  - database: reporting
+    schema: staging
+    name: example_stale_exports
 ```
 
 MySQL - see [`config/tables.mysql.example.yml`](./config/tables.mysql.example.yml):
@@ -73,8 +85,12 @@ MySQL - see [`config/tables.mysql.example.yml`](./config/tables.mysql.example.ym
 ```yaml
 fail_on_block: true
 tables:
-  - name: example_audit_log
-  - name: example_session_logs
+  - database: gyg
+    name: example_audit_log
+  - database: gyg
+    name: example_session_logs
+  - database: gyg_reporting
+    name: example_stale_exports
 ```
 
 ## Sample workflow (in the target application repo, not here)
@@ -116,7 +132,6 @@ jobs:
           db_engine: postgres
           db_host: ${{ secrets.RETENTION_DB_HOST }}
           db_port: "5432"
-          db_name: ${{ secrets.RETENTION_DB_NAME }}
           db_username: ${{ secrets.RETENTION_DB_USERNAME }}
           db_password: ${{ secrets.RETENTION_DB_PASSWORD }}
           config_path: .github/truncate-tables.yml
@@ -142,22 +157,25 @@ jobs:
           SLACK_WEBHOOK: ${{ secrets.SLACK_RETENTION_WEBHOOK_URL }}
 ```
 
-`.github/truncate-tables.yml` (the allowlist config referenced above):
+`.github/truncate-tables.yml` (the allowlist config referenced above - can
+span multiple databases/schemas, see [Allowlist config format](#allowlist-config-format)):
 
 ```yaml
 fail_on_block: true
 tables:
-  - schema: public
+  - database: analytics
+    schema: public
     name: example_audit_log
-  - schema: public
+  - database: analytics
+    schema: public
     name: example_session_logs
 ```
 
 Other things a real deployment needs, beyond the two files above:
 
-- `RETENTION_DB_HOST`, `RETENTION_DB_NAME`, `RETENTION_DB_USERNAME`,
-  `RETENTION_DB_PASSWORD` and `SLACK_RETENTION_WEBHOOK_URL` registered as
-  repo/environment secrets - never hardcoded in the workflow.
+- `RETENTION_DB_HOST`, `RETENTION_DB_USERNAME`, `RETENTION_DB_PASSWORD` and
+  `SLACK_RETENTION_WEBHOOK_URL` registered as repo/environment secrets -
+  never hardcoded in the workflow.
 - The `prod-db-purge` GitHub Environment created in the target repo's
   settings, with required reviewers, before the workflow can run against
   prod.

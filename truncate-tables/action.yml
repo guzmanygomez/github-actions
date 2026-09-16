@@ -10,9 +10,6 @@ inputs:
   db_port:
     description: "Database port"
     required: true
-  db_name:
-    description: "Database/schema name"
-    required: true
   db_username:
     description: "Database username (pass via secrets in the caller workflow)"
     required: true
@@ -48,7 +45,6 @@ runs:
         DB_ENGINE: ${{ inputs.db_engine }}
         DB_HOST: ${{ inputs.db_host }}
         DB_PORT: ${{ inputs.db_port }}
-        DB_NAME: ${{ inputs.db_name }}
         DB_USERNAME: ${{ inputs.db_username }}
         DB_PASSWORD: ${{ inputs.db_password }}
         DRY_RUN: ${{ inputs.dry_run }}

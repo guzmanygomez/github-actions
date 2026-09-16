@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Entrypoint for the truncate-tables action.
 
-Reads an explicit table allowlist from a YAML config, checks each table for
-foreign keys and triggers that would make truncation unsafe, then either
-logs what it would do (dry-run, the default) or truncates the non-blocked
-tables. Writes `status` and `summary` to $GITHUB_OUTPUT so the calling
-workflow can post its own Slack notification (see README).
+Reads an explicit table allowlist from a YAML config - each entry names its
+own database/schema, so a single run can target multiple databases/schemas
+on the same DB server/credentials - checks each table for foreign keys and
+triggers that would make truncation unsafe, then either logs what it would
+do (dry-run, the default) or truncates the non-blocked tables. Writes
+`status` and `summary` to $GITHUB_OUTPUT so the calling workflow can post
+its own Slack notification (see README).
 """
 from __future__ import annotations
 
@@ -36,13 +38,10 @@ def main() -> int:
     args = parser.parse_args()
 
     engine = os.environ["DB_ENGINE"]
-    db_config = DbConfig(
-        host=os.environ["DB_HOST"],
-        port=os.environ["DB_PORT"],
-        name=os.environ["DB_NAME"],
-        username=os.environ["DB_USERNAME"],
-        password=os.environ["DB_PASSWORD"],
-    )
+    db_host = os.environ["DB_HOST"]
+    db_port = os.environ["DB_PORT"]
+    db_username = os.environ["DB_USERNAME"]
+    db_password = os.environ["DB_PASSWORD"]
     dry_run = is_dry_run()
 
     try:
@@ -56,8 +55,19 @@ def main() -> int:
     results = []
 
     for entry in config.tables:
+        db_config = DbConfig(
+            host=db_host,
+            port=db_port,
+            name=entry.database,
+            username=db_username,
+            password=db_password,
+        )
         adapter = build_adapter(engine, db_config, entry.schema)
-        label = f"{entry.schema}.{entry.name}" if engine == "postgres" else entry.name
+        label = (
+            f"{entry.database}.{entry.schema}.{entry.name}"
+            if engine == "postgres"
+            else f"{entry.database}.{entry.name}"
+        )
         try:
             if not adapter.table_exists(entry.name):
                 print(f"::error title=truncate-tables::Table not found: {label}")

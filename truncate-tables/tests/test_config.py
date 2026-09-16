@@ -21,14 +21,31 @@ def test_load_valid_config():
         """
         fail_on_block: true
         tables:
-          - schema: public
+          - database: analytics
+            schema: public
             name: example_audit_log
         """
     )
     config = load_config(path)
     assert config.fail_on_block is True
     assert len(config.tables) == 1
+    assert config.tables[0].database == "analytics"
     assert config.tables[0].name == "example_audit_log"
+
+
+def test_supports_multiple_databases():
+    path = write_config(
+        """
+        tables:
+          - database: analytics
+            name: example_audit_log
+          - database: reporting
+            schema: staging
+            name: example_audit_log
+        """
+    )
+    config = load_config(path)
+    assert [t.database for t in config.tables] == ["analytics", "reporting"]
 
 
 def test_rejects_empty_table_list():
@@ -47,9 +64,11 @@ def test_rejects_duplicate_tables():
     path = write_config(
         """
         tables:
-          - schema: public
+          - database: analytics
+            schema: public
             name: dupe
-          - schema: public
+          - database: analytics
+            schema: public
             name: dupe
         """
     )
@@ -61,7 +80,20 @@ def test_rejects_entry_without_name():
     path = write_config(
         """
         tables:
+          - database: analytics
+            schema: public
+        """
+    )
+    with pytest.raises(ConfigError):
+        load_config(path)
+
+
+def test_rejects_entry_without_database():
+    path = write_config(
+        """
+        tables:
           - schema: public
+            name: example_audit_log
         """
     )
     with pytest.raises(ConfigError):

@@ -12,6 +12,7 @@ class ConfigError(ValueError):
 
 @dataclass
 class TableEntry:
+    database: str
     schema: str
     name: str
 
@@ -33,17 +34,20 @@ def load_config(path: str) -> Config:
         )
 
     tables: list[TableEntry] = []
-    seen: set[tuple[str, str]] = set()
+    seen: set[tuple[str, str, str]] = set()
     for entry in tables_raw:
-        if not isinstance(entry, dict) or "name" not in entry:
-            raise ConfigError(f"Invalid table entry: {entry!r} (must be a mapping with a 'name' key)")
+        if not isinstance(entry, dict) or "name" not in entry or "database" not in entry:
+            raise ConfigError(
+                f"Invalid table entry: {entry!r} (must be a mapping with 'database' and 'name' keys)"
+            )
+        database = entry["database"]
         schema = entry.get("schema", "public")
         name = entry["name"]
-        key = (schema, name)
+        key = (database, schema, name)
         if key in seen:
             raise ConfigError(f"Duplicate table entry in allowlist: {key}")
         seen.add(key)
-        tables.append(TableEntry(schema=schema, name=name))
+        tables.append(TableEntry(database=database, schema=schema, name=name))
 
     return Config(
         tables=tables,

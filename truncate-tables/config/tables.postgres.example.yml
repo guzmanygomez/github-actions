@@ -5,15 +5,22 @@
 # signed off by the data/table owner before it is used against any real
 # database, per BHPL-3313 safeguards. No wildcard/dynamic discovery is
 # supported by design - only tables explicitly listed here are ever touched.
+#
+# Each table entry names its own `database` (and `schema`, default "public"),
+# so a single run can target multiple databases/schemas on the same server
+# using the one set of db_host/db_username/db_password action inputs.
 
 # Fail the whole job if any listed table is blocked (has FKs and/or triggers
 # that make truncation unsafe). Recommended: true.
 fail_on_block: true
 
 tables:
-  # `schema` is used as the Postgres schema name, or ignored for MySQL
-  # (MySQL uses `db_name` from the action inputs as the database/schema).
-  - schema: public
+  - database: analytics
+    schema: public
     name: example_audit_log
-  - schema: public
+  - database: analytics
+    schema: public
     name: example_session_logs
+  - database: reporting
+    schema: staging
+    name: example_stale_exports
