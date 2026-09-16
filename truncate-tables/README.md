@@ -52,7 +52,12 @@ is done.
 
 ## Allowlist config format
 
-See [`config/tables.example.yml`](./config/tables.example.yml):
+`schema` is used for Postgres; it's omitted/ignored for MySQL (MySQL uses
+`db_name` from the action inputs as the database/schema). A single config
+targets a single `db_engine`, matching the single DB connection the action
+makes per run.
+
+Postgres - see [`config/tables.postgres.example.yml`](./config/tables.postgres.example.yml):
 
 ```yaml
 fail_on_block: true
@@ -63,8 +68,14 @@ tables:
     name: example_session_logs
 ```
 
-`schema` is used for Postgres; it's ignored for MySQL (MySQL uses `db_name`
-from the action inputs as the database/schema).
+MySQL - see [`config/tables.mysql.example.yml`](./config/tables.mysql.example.yml):
+
+```yaml
+fail_on_block: true
+tables:
+  - name: example_audit_log
+  - name: example_session_logs
+```
 
 ## Sample workflow (in the target application repo, not here)
 

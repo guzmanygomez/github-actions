@@ -1,0 +1,18 @@
+# EXAMPLE allowlist config for the truncate-tables action, MySQL variant.
+#
+# This is a placeholder. A real, ticket-specific list must be authored and
+# signed off by the data/table owner before it is used against any real
+# database, per BHPL-3313 safeguards. No wildcard/dynamic discovery is
+# supported by design - only tables explicitly listed here are ever touched.
+#
+# `schema` is a Postgres-only concept and is ignored when db_engine is mysql
+# (MySQL uses the `db_name` action input as the database/schema for every
+# table), so it's omitted below.
+
+# Fail the whole job if any listed table is blocked (has FKs and/or triggers
+# that make truncation unsafe). Recommended: true.
+fail_on_block: true
+
+tables:
+  - name: example_audit_log
+  - name: example_session_logs

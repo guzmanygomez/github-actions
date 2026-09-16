@@ -1,4 +1,5 @@
-# EXAMPLE allowlist config for the truncate-tables action.
+# EXAMPLE allowlist config for the truncate-tables action, Postgres variant.
+# See tables.mysql.example.yml for the MySQL variant.
 #
 # This is a placeholder. A real, ticket-specific list must be authored and
 # signed off by the data/table owner before it is used against any real
