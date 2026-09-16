@@ -99,6 +99,8 @@ This is a complete, runnable example of a caller workflow: it schedules the
 job, checks out the config, calls this action, and reports the result to
 Slack whether the run succeeds or fails.
 
+### Postgres example
+
 `.github/workflows/purge-expired-records.yml`:
 
 ```yaml
@@ -171,7 +173,82 @@ tables:
     name: example_session_logs
 ```
 
-Other things a real deployment needs, beyond the two files above:
+### MySQL example
+
+Same workflow shape, just point it at a MySQL server and config instead:
+
+`.github/workflows/purge-expired-records.yml`:
+
+```yaml
+name: Purge expired records
+
+on:
+  # Every Monday at 03:00 UTC.
+  schedule:
+    - cron: "0 3 * * 1"
+  # Allows a manual, on-demand run (e.g. to re-check after fixing a blocked table).
+  workflow_dispatch: {}
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    # Required-reviewer gate lives on this GitHub Environment, configured in
+    # the target repo's settings - this action does not enforce it itself.
+    environment: prod-db-purge
+    env:
+      # Flip to "false" only once the "Before enabling against prod"
+      # checklist below is fully done for this repo/environment.
+      DRY_RUN: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Truncate allowlisted tables
+        id: truncate
+        uses: gyg/github-actions/truncate-tables@main
+        with:
+          db_engine: mysql
+          db_host: ${{ secrets.RETENTION_DB_HOST }}
+          db_port: "3306"
+          db_username: ${{ secrets.RETENTION_DB_USERNAME }}
+          db_password: ${{ secrets.RETENTION_DB_PASSWORD }}
+          config_path: .github/truncate-tables.yml
+          dry_run: ${{ env.DRY_RUN }}
+
+      # `if: always()` so this still runs (and reports failure) even if the
+      # truncate step above failed or was blocked.
+      - name: Notify Slack
+        if: always()
+        uses: rtcamp/action-slack-notify@v2
+        env:
+          SLACK_CHANNEL: data-retention-alerts
+          SLACK_COLOR: ${{ steps.truncate.outputs.status == 'success' && 'good' || 'danger' }}
+          SLACK_TITLE: "Purge expired records - ${{ steps.truncate.outputs.status || 'failure' }}"
+          SLACK_MESSAGE: |
+            *Workflow:* ${{ github.workflow }}
+            *Repo:* ${{ github.repository }}
+            *Dry run:* ${{ env.DRY_RUN }}
+            *Run:* ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            ${{ steps.truncate.outputs.summary }}
+          SLACK_USERNAME: Github
+          SLACK_WEBHOOK: ${{ secrets.SLACK_RETENTION_WEBHOOK_URL }}
+```
+
+`.github/truncate-tables.yml` (the allowlist config referenced above):
+
+```yaml
+fail_on_block: true
+tables:
+  - database: gyg
+    name: example_audit_log
+  - database: gyg
+    name: example_session_logs
+```
+
+### Other things a real deployment needs
+
+Beyond the workflow and config files above:
 
 - `RETENTION_DB_HOST`, `RETENTION_DB_USERNAME`, `RETENTION_DB_PASSWORD` and
   `SLACK_RETENTION_WEBHOOK_URL` registered as repo/environment secrets -
