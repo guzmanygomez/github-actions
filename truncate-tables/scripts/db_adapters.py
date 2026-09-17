@@ -1,12 +1,25 @@
 """Thin per-engine DB adapters used by truncate.py.
 
 Each adapter exposes the same interface so truncate.py can stay engine-agnostic:
-  - connect()
+  - close()
   - table_exists(table) -> bool
   - row_count(table) -> int
   - referencing_foreign_keys(table) -> list[str]   # human-readable descriptions
   - triggers(table) -> list[str]                    # trigger names on the table
-  - truncate(table) -> None
+  - try_lock(table, timeout_seconds) -> None         # single attempt; raises on failure/timeout
+  - unlock() -> None                                 # releases whatever try_lock acquired
+  - capture_sequence_state(table) -> Any             # opaque, pass straight to restore_sequence_state
+  - restore_sequence_state(table, state) -> None
+  - truncate(table) -> None                          # does not commit - caller controls that
+  - commit() -> None
+  - rollback() -> None
+
+Locking + sequence preservation exist to avoid a primary key clash with the
+datalake: a table's PK sequence/auto-increment "next value" is captured right
+after the exclusive lock is acquired (so no in-flight transaction can still be
+consuming it), the table is truncated, and the captured value is restored -
+all before the lock is released - so the next row inserted after truncation
+continues from where it left off instead of restarting from 1.
 """
 from __future__ import annotations
 
@@ -34,6 +47,7 @@ class MySQLAdapter:
             password=config.password,
             database=config.name,
             cursorclass=pymysql.cursors.Cursor,
+            autocommit=False,
         )
 
     def close(self) -> None:
@@ -83,10 +97,49 @@ class MySQLAdapter:
             )
             return [name for (name,) in cur.fetchall()]
 
+    def try_lock(self, table: str, timeout_seconds: float) -> None:
+        # LOCK TABLES is session-scoped (not part of the transaction) and
+        # either fully succeeds or fails outright - no partial lock state to
+        # clean up on failure. lock_wait_timeout bounds how long this single
+        # attempt waits; the caller layers its own retry/backoff on top.
+        timeout = max(1, int(round(timeout_seconds)))
+        with self._conn.cursor() as cur:
+            cur.execute(f"SET SESSION lock_wait_timeout = {timeout}")
+            cur.execute(f"LOCK TABLES `{table}` WRITE")
+
+    def unlock(self) -> None:
+        with self._conn.cursor() as cur:
+            cur.execute("UNLOCK TABLES")
+
+    def capture_sequence_state(self, table: str):
+        # The "next" AUTO_INCREMENT value MySQL will hand out - exactly what
+        # we want to restore after truncate (which always resets it to 1).
+        with self._conn.cursor() as cur:
+            cur.execute(
+                "SELECT AUTO_INCREMENT FROM information_schema.tables "
+                "WHERE table_schema = %s AND table_name = %s",
+                (self._config.name, table),
+            )
+            row = cur.fetchone()
+            return row[0] if row else None
+
+    def restore_sequence_state(self, table: str, state) -> None:
+        if state is None:
+            return  # table has no AUTO_INCREMENT column - nothing to restore
+        with self._conn.cursor() as cur:
+            cur.execute(f"ALTER TABLE `{table}` AUTO_INCREMENT = %s", (state,))
+
     def truncate(self, table: str) -> None:
         with self._conn.cursor() as cur:
             cur.execute(f"TRUNCATE TABLE `{table}`")
+
+    def commit(self) -> None:
+        # TRUNCATE/ALTER are DDL and auto-commit in MySQL regardless; this is
+        # a no-op safety net for symmetry with the Postgres adapter.
         self._conn.commit()
+
+    def rollback(self) -> None:
+        self._conn.rollback()
 
 
 class PostgresAdapter:
@@ -102,6 +155,7 @@ class PostgresAdapter:
             password=config.password,
             dbname=config.name,
         )
+        self._conn.autocommit = False
 
     def close(self) -> None:
         self._conn.close()
@@ -154,10 +208,59 @@ class PostgresAdapter:
             )
             return [name for (name,) in cur.fetchall()]
 
+    def try_lock(self, table: str, timeout_seconds: float) -> None:
+        # ACCESS EXCLUSIVE is what TRUNCATE itself takes anyway; taking it
+        # explicitly first, with a short lock_timeout, lets us control
+        # retry/backoff ourselves instead of blocking on Postgres's queue.
+        # Runs inside the transaction that also does the truncate/restore/
+        # commit, so the lock is held until that commit (or a rollback).
+        timeout_ms = max(1, int(round(timeout_seconds * 1000)))
+        with self._conn.cursor() as cur:
+            cur.execute(f"SET LOCAL lock_timeout = '{timeout_ms}ms'")
+            cur.execute(f'LOCK TABLE "{self._schema}"."{table}" IN ACCESS EXCLUSIVE MODE')
+
+    def unlock(self) -> None:
+        # Nothing to do: the lock is released by commit()/rollback().
+        pass
+
+    def capture_sequence_state(self, table: str):
+        with self._conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT pg_get_serial_sequence(%s, a.attname)
+                FROM pg_attribute a
+                JOIN pg_class c ON a.attrelid = c.oid
+                JOIN pg_namespace n ON c.relnamespace = n.oid
+                WHERE c.relname = %s AND n.nspname = %s
+                  AND a.attnum > 0 AND NOT a.attisdropped
+                """,
+                (f"{self._schema}.{table}", table, self._schema),
+            )
+            sequence_names = [row[0] for row in cur.fetchall() if row[0]]
+
+            state = []
+            for seq in sequence_names:
+                cur.execute(f"SELECT last_value, is_called FROM {seq}")
+                last_value, is_called = cur.fetchone()
+                state.append((seq, last_value, is_called))
+            return state or None
+
+    def restore_sequence_state(self, table: str, state) -> None:
+        if not state:
+            return  # table has no serial/identity column - nothing to restore
+        with self._conn.cursor() as cur:
+            for seq, last_value, is_called in state:
+                cur.execute("SELECT setval(%s, %s, %s)", (seq, last_value, is_called))
+
     def truncate(self, table: str) -> None:
         with self._conn.cursor() as cur:
             cur.execute(f'TRUNCATE TABLE "{self._schema}"."{table}"')
+
+    def commit(self) -> None:
         self._conn.commit()
+
+    def rollback(self) -> None:
+        self._conn.rollback()
 
 
 def build_adapter(engine: str, config: DbConfig, schema: str):

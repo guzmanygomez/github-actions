@@ -23,6 +23,17 @@ is done.
   found, that table is marked `BLOCKED` and skipped rather than truncated.
 - **Fail-closed.** If `fail_on_block: true` (default) and any table is
   blocked, or a listed table doesn't exist, the job exits non-zero.
+- **Locked truncation with retry.** Before truncating, the action takes an
+  exclusive lock on the table (`LOCK TABLE ... ACCESS EXCLUSIVE` on Postgres,
+  `LOCK TABLES ... WRITE` on MySQL), retrying with jittered exponential
+  backoff (10 attempts by default) if it's contended. If the lock can't be
+  acquired, the table is left untouched and reported as `LOCK_FAILED` -
+  it is never truncated without holding the lock. See
+  [Locking, retries, and PK sequence preservation](#locking-retries-and-pk-sequence-preservation).
+- **PK sequence/AUTO_INCREMENT preservation.** While holding the lock, the
+  action captures the table's current PK sequence (Postgres) or
+  AUTO_INCREMENT (MySQL) "next value", truncates, and restores that value -
+  so the next inserted row doesn't reuse a PK already sent to the datalake.
 - **Slack alerting.** The action itself does not call Slack - it emits
   `status` (`success`/`failure`) and `summary` outputs. The caller workflow
   posts these to Slack via [`rtcamp/action-slack-notify`](https://github.com/rtcamp/action-slack-notify),
@@ -54,7 +65,15 @@ login/config.
 | Output    | Description                                                                 |
 |-----------|-------------------------------------------------------------------------------|
 | `status`  | `success` or `failure` - use it to pick the Slack message color/pass/fail icon |
-| `summary` | One line per allowlisted table: its result (dry-run/truncated/blocked/error) and detail |
+| `summary` | One line per allowlisted table: its result and detail (see statuses below) |
+
+Per-table statuses that can appear in `summary`: `DRY_RUN`, `TRUNCATED`,
+`BLOCKED` (FKs/triggers found), `LOCK_FAILED` (couldn't acquire the lock
+after all retries - table untouched), `TRUNCATED_SEQUENCE_RESTORE_FAILED`
+(truncated, but restoring the PK sequence/AUTO_INCREMENT afterwards failed -
+**needs manual follow-up**, see below), or `ERROR` (e.g. table not found).
+Every status except `DRY_RUN` and `TRUNCATED` fails the job (`BLOCKED` only
+fails it if `fail_on_block: true`, the default).
 
 ## Allowlist config format
 
@@ -68,6 +87,11 @@ Postgres - see [`config/tables.postgres.example.yml`](./config/tables.postgres.e
 
 ```yaml
 fail_on_block: true
+lock:
+  max_attempts: 10
+  base_delay_seconds: 1
+  max_delay_seconds: 30
+  attempt_timeout_seconds: 3
 tables:
   - database: analytics
     schema: public
@@ -84,6 +108,11 @@ MySQL - see [`config/tables.mysql.example.yml`](./config/tables.mysql.example.ym
 
 ```yaml
 fail_on_block: true
+lock:
+  max_attempts: 10
+  base_delay_seconds: 1
+  max_delay_seconds: 30
+  attempt_timeout_seconds: 3
 tables:
   - database: gyg
     name: example_audit_log
@@ -92,6 +121,45 @@ tables:
   - database: gyg_reporting
     name: example_stale_exports
 ```
+
+## Locking, retries, and PK sequence preservation
+
+Truncating a high-transaction table risks a PK clash with the datalake if a
+new row is inserted right after truncation and reuses a PK value that was
+already sent downstream. To prevent that, for each table (once it's passed
+the FK/trigger check and `dry_run` is `"false"`) the action:
+
+1. Takes an exclusive lock on the table - `LOCK TABLE ... IN ACCESS EXCLUSIVE
+   MODE` (Postgres) or `LOCK TABLES ... WRITE` (MySQL) - so no other
+   transaction can read or write it for the duration.
+2. If the lock is contended, retries with full-jitter exponential backoff:
+   `lock.max_attempts` tries (default 10), starting at `lock.base_delay_seconds`
+   (default 1s) and capped at `lock.max_delay_seconds` (default 30s) between
+   tries, with each individual attempt bounded by
+   `lock.attempt_timeout_seconds` (default 3s). If every attempt fails, the
+   table is reported `LOCK_FAILED` and left completely untouched.
+3. Once locked, captures the table's current PK sequence value (Postgres:
+   every sequence owned by one of its columns, via `pg_get_serial_sequence`)
+   or AUTO_INCREMENT value (MySQL: from `information_schema.tables`, since
+   MySQL always resets AUTO_INCREMENT on `TRUNCATE`).
+4. Truncates the table, then restores the captured value(s) so the next
+   inserted row continues from where it left off.
+5. Releases the lock (Postgres: on `COMMIT`, alongside the sequence restore,
+   in the same transaction; MySQL: explicit `UNLOCK TABLES` after the DDL,
+   since `TRUNCATE`/`ALTER TABLE` auto-commit and aren't part of a Postgres-
+   style transaction).
+
+**Caveat:** table locks don't prevent a session from calling `nextval()`
+directly without touching the table, so this specifically protects the
+common insert-driven case, not every conceivable way a sequence's value
+could change concurrently.
+
+**If you see `TRUNCATED_SEQUENCE_RESTORE_FAILED`:** the table was already
+truncated (that part can't be undone) but restoring its PK
+sequence/AUTO_INCREMENT afterwards failed - MySQL's `TRUNCATE`/`ALTER TABLE`
+aren't transactional, so this can't be rolled back automatically. Treat it
+as an incident: manually verify/set the correct next PK value on that table
+before any new rows are inserted.
 
 ## Sample workflow (in the target application repo, not here)
 
@@ -257,8 +325,10 @@ Beyond the workflow and config files above:
   settings, with required reviewers, before the workflow can run against
   prod.
 - A dedicated, least-privilege DB user for `RETENTION_DB_USERNAME` that can
-  only `SELECT` (for the checks) and `TRUNCATE` on the allowlisted tables -
-  not an admin/app credential.
+  only `SELECT`, `TRUNCATE`, and (for the lock + PK sequence restore)
+  `LOCK TABLES`/`ALTER` (MySQL) or nothing extra beyond `TRUNCATE`
+  (Postgres, since locking/`setval` don't need separate grants) on the
+  allowlisted tables - not an admin/app credential.
 
 ## Before enabling against prod
 
@@ -274,7 +344,12 @@ consuming repo flips `dry_run` to `"false"` against a production database:
 4. Run the workflow with `dry_run: "true"` against a non-prod database first
    and confirm the logged tables/row counts/blocked-table list match
    expectations.
-5. Only then flip `dry_run` to `"false"` for the prod schedule.
+5. For any table with real transactional traffic, test a live (non-dry-run)
+   run against a non-prod replica of that traffic pattern and confirm the
+   lock is held only briefly and doesn't cause a noticeable request
+   pile-up; if it might, schedule the prod cron for a low-traffic window and
+   coordinate with the table's owning team beforehand.
+6. Only then flip `dry_run` to `"false"` for the prod schedule.
 
 ## Local testing
 

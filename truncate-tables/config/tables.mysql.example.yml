@@ -14,6 +14,17 @@
 # that make truncation unsafe). Recommended: true.
 fail_on_block: true
 
+# Optional. Controls how the action locks a table before truncating it (to
+# guarantee no in-flight transaction is still consuming its AUTO_INCREMENT
+# value, avoiding a clash with rows already moved to the datalake) and how
+# it retries if the lock is contended. All fields default to the values
+# below if this whole section is omitted.
+lock:
+  max_attempts: 10          # give up after this many failed lock attempts
+  base_delay_seconds: 1     # backoff starting point between attempts
+  max_delay_seconds: 30     # backoff cap
+  attempt_timeout_seconds: 3 # how long a single lock attempt waits before giving up
+
 tables:
   - database: gyg
     name: example_audit_log

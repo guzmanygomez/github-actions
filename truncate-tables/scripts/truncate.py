@@ -3,11 +3,20 @@
 
 Reads an explicit table allowlist from a YAML config - each entry names its
 own database/schema, so a single run can target multiple databases/schemas
-on the same DB server/credentials - checks each table for foreign keys and
-triggers that would make truncation unsafe, then either logs what it would
-do (dry-run, the default) or truncates the non-blocked tables. Writes
-`status` and `summary` to $GITHUB_OUTPUT so the calling workflow can post
-its own Slack notification (see README).
+on the same DB server/credentials. For each table:
+
+  1. Checks for foreign keys and triggers that would make truncation unsafe;
+     blocks the table if either is found.
+  2. In dry-run mode (the default), logs what it would do and stops there.
+  3. Otherwise, takes an exclusive lock on the table (retrying with backoff
+     and jitter if it's contended - see locking.py), captures its PK
+     sequence/AUTO_INCREMENT "next value", truncates it, restores that value,
+     then releases the lock. This guards against a truncated table's PK
+     sequence restarting and later clashing with rows already moved to the
+     datalake.
+
+Writes `status` and `summary` to $GITHUB_OUTPUT so the calling workflow can
+post its own Slack notification (see README).
 """
 from __future__ import annotations
 
@@ -17,6 +26,7 @@ import sys
 
 from config_loader import ConfigError, load_config
 from db_adapters import DbConfig, build_adapter
+from locking import LockAcquisitionError, acquire_lock_with_retry
 
 
 def is_dry_run() -> bool:
@@ -30,6 +40,58 @@ def write_outputs(status: str, summary: str) -> None:
     with open(output_path, "a", encoding="utf-8") as f:
         f.write(f"status={status}\n")
         f.write(f"summary<<TRUNCATE_TABLES_SUMMARY_EOF\n{summary}\nTRUNCATE_TABLES_SUMMARY_EOF\n")
+
+
+def truncate_with_lock(adapter, entry, label: str, config) -> tuple[str, str]:
+    """Locks (with retry), preserves the PK sequence, truncates, and unlocks.
+
+    Returns (status, detail). Never raises - all failure modes are reported
+    as a status string so the caller can keep processing other tables.
+    """
+
+    def on_retry(attempt, max_attempts, delay, exc):
+        print(
+            f"::warning title=truncate-tables::{label}: lock attempt {attempt}/{max_attempts} "
+            f"failed ({exc}); retrying in {delay:.1f}s"
+        )
+
+    try:
+        attempts = acquire_lock_with_retry(
+            lambda: adapter.try_lock(entry.name, config.lock_attempt_timeout_seconds),
+            max_attempts=config.lock_max_attempts,
+            base_delay_seconds=config.lock_base_delay_seconds,
+            max_delay_seconds=config.lock_max_delay_seconds,
+            on_retry=on_retry,
+        )
+    except LockAcquisitionError as exc:
+        print(f"::error title=truncate-tables::{label}: {exc}")
+        return "LOCK_FAILED", str(exc)
+
+    truncated = False
+    try:
+        seq_state = adapter.capture_sequence_state(entry.name)
+        adapter.truncate(entry.name)
+        truncated = True
+        adapter.restore_sequence_state(entry.name, seq_state)
+        adapter.commit()
+        detail = f"lock acquired on attempt {attempts}, PK sequence preserved"
+        print(f"::notice title=truncate-tables::Truncated {label} ({detail})")
+        return "TRUNCATED", detail
+    except Exception as exc:  # noqa: BLE001 - surfaced via status, not re-raised
+        adapter.rollback()
+        if truncated:
+            # MySQL's TRUNCATE is DDL and already committed - the sequence
+            # restore failing afterwards needs manual follow-up, it can't be
+            # rolled back.
+            print(
+                f"::error title=truncate-tables::{label}: truncated but failed to restore "
+                f"PK sequence: {exc}"
+            )
+            return "TRUNCATED_SEQUENCE_RESTORE_FAILED", str(exc)
+        print(f"::error title=truncate-tables::{label}: failed before truncation: {exc}")
+        return "ERROR", str(exc)
+    finally:
+        adapter.unlock()
 
 
 def main() -> int:
@@ -90,17 +152,22 @@ def main() -> int:
                 continue
 
             if dry_run:
-                print(f"::notice title=truncate-tables::[DRY RUN] would truncate {label} ({count} rows)")
+                print(
+                    f"::notice title=truncate-tables::[DRY RUN] would lock {label} "
+                    f"(up to {config.lock_max_attempts} attempts), preserve its PK sequence/"
+                    f"auto-increment value, truncate ({count} rows), then restore it"
+                )
                 results.append((label, "DRY_RUN", f"{count} rows"))
-            else:
-                adapter.truncate(entry.name)
-                print(f"::notice title=truncate-tables::Truncated {label} ({count} rows)")
-                results.append((label, "TRUNCATED", f"{count} rows"))
+                continue
+
+            status, detail = truncate_with_lock(adapter, entry, label, config)
+            results.append((label, status, detail))
         finally:
             adapter.close()
 
+    failing_statuses = {"ERROR", "LOCK_FAILED", "TRUNCATED_SEQUENCE_RESTORE_FAILED"}
     blocked = [r for r in results if r[1] == "BLOCKED"]
-    errored = [r for r in results if r[1] == "ERROR"]
+    failed = [r for r in results if r[1] in failing_statuses]
 
     summary_lines = [f"{label}: {status} ({detail})" for label, status, detail in results]
     summary_text = "\n".join(summary_lines)
@@ -108,10 +175,10 @@ def main() -> int:
     print(summary_text)
     print("::endgroup::")
 
-    success = not errored and not (blocked and config.fail_on_block)
+    success = not failed and not (blocked and config.fail_on_block)
     write_outputs("success" if success else "failure", summary_text)
 
-    if errored or (blocked and config.fail_on_block):
+    if failed or (blocked and config.fail_on_block):
         return 1
     return 0
 
