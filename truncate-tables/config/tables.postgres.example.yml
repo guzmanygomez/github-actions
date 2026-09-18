@@ -1,0 +1,37 @@
+# EXAMPLE allowlist config for the truncate-tables action, Postgres variant.
+# See tables.mysql.example.yml for the MySQL variant.
+#
+# This is a placeholder. A real, ticket-specific list must be authored and
+# signed off by the data/table owner before it is used against any real
+# database, per BHPL-3313 safeguards. No wildcard/dynamic discovery is
+# supported by design - only tables explicitly listed here are ever touched.
+#
+# Each table entry names its own `database` (and `schema`, default "public"),
+# so a single run can target multiple databases/schemas on the same server
+# using the one set of db_host/db_username/db_password action inputs.
+
+# Fail the whole job if any listed table is blocked (has FKs and/or triggers
+# that make truncation unsafe). Recommended: true.
+fail_on_block: true
+
+# Optional. Controls how the action locks a table before truncating it (to
+# guarantee no in-flight transaction is still consuming its PK sequence,
+# avoiding a clash with rows already moved to the datalake) and how it
+# retries if the lock is contended. All fields default to the values below
+# if this whole section is omitted.
+lock:
+  max_attempts: 10          # give up after this many failed lock attempts
+  base_delay_seconds: 1     # backoff starting point between attempts
+  max_delay_seconds: 30     # backoff cap
+  attempt_timeout_seconds: 3 # how long a single lock attempt waits before giving up
+
+tables:
+  - database: analytics
+    schema: public
+    name: example_audit_log
+  - database: analytics
+    schema: public
+    name: example_session_logs
+  - database: reporting
+    schema: staging
+    name: example_stale_exports
