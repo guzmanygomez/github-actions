@@ -138,16 +138,34 @@ the FK/trigger check and `dry_run` is `"false"`) the action:
    tries, with each individual attempt bounded by
    `lock.attempt_timeout_seconds` (default 3s). If every attempt fails, the
    table is reported `LOCK_FAILED` and left completely untouched.
-3. Once locked, captures the table's current PK sequence value (Postgres:
-   every sequence owned by one of its columns, via `pg_get_serial_sequence`)
-   or AUTO_INCREMENT value (MySQL: from `information_schema.tables`, since
-   MySQL always resets AUTO_INCREMENT on `TRUNCATE`).
-4. Truncates the table, then restores the captured value(s) so the next
-   inserted row continues from where it left off.
+3. Once locked, captures the table's current PK sequence value: for each
+   candidate, it takes the **larger** of two readings, since either one
+   alone can be stale/wrong:
+   - Postgres: every sequence owned by one of the table's columns (via
+     `pg_get_serial_sequence`), read as `last_value`/`is_called`.
+   - MySQL: `information_schema.tables.AUTO_INCREMENT` - but this can be
+     served from a cached stats snapshot up to `information_schema_stats_expiry`
+     old (default 24h on MySQL 8/Aurora MySQL), so the action first runs
+     `SET SESSION information_schema_stats_expiry = 0` to force a live read.
+   - Both engines: `MAX(pk_column)` read directly off the table while the
+     lock is held (exact, not cached) - the restored value is never less
+     than `MAX(pk_column) + 1`.
+4. Truncates the table, then restores the higher of those two values so the
+   next inserted row continues from where it left off (MySQL: `ALTER TABLE
+   ... AUTO_INCREMENT = ...`; Postgres: `setval(..., is_called = false)` so
+   the *next* `nextval()` returns exactly that value).
 5. Releases the lock (Postgres: on `COMMIT`, alongside the sequence restore,
    in the same transaction; MySQL: explicit `UNLOCK TABLES` after the DDL,
    since `TRUNCATE`/`ALTER TABLE` auto-commit and aren't part of a Postgres-
    style transaction).
+
+Each table's line in the `summary` output includes rows removed, how long
+the lock+truncate+restore took, the reported sequence/AUTO_INCREMENT value,
+the observed `MAX(pk)`, and the value it was actually set to - e.g.:
+
+```
+kms.oms_kitchen_snapshot: TRUNCATED (18432 rows removed in 0.41s (lock acquired on attempt 1); AUTO_INCREMENT column=id reported_next=1 observed_max=182004 set_to=182005)
+```
 
 **Caveat:** table locks don't prevent a session from calling `nextval()`
 directly without touching the table, so this specifically protects the

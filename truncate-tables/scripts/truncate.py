@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
 
 from config_loader import ConfigError, load_config
 from db_adapters import DbConfig, build_adapter
@@ -42,12 +43,15 @@ def write_outputs(status: str, summary: str) -> None:
         f.write(f"summary<<TRUNCATE_TABLES_SUMMARY_EOF\n{summary}\nTRUNCATE_TABLES_SUMMARY_EOF\n")
 
 
-def truncate_with_lock(adapter, entry, label: str, config) -> tuple[str, str]:
+def truncate_with_lock(adapter, entry, label: str, count: int, config) -> tuple[str, str]:
     """Locks (with retry), preserves the PK sequence, truncates, and unlocks.
 
-    Returns (status, detail). Never raises - all failure modes are reported
-    as a status string so the caller can keep processing other tables.
+    Returns (status, detail) - detail includes rows removed, elapsed time,
+    and the sequence/AUTO_INCREMENT values observed and restored, for the
+    job summary. Never raises - all failure modes are reported as a status
+    string so the caller can keep processing other tables.
     """
+    start = time.perf_counter()
 
     def on_retry(attempt, max_attempts, delay, exc):
         print(
@@ -64,8 +68,10 @@ def truncate_with_lock(adapter, entry, label: str, config) -> tuple[str, str]:
             on_retry=on_retry,
         )
     except LockAcquisitionError as exc:
-        print(f"::error title=truncate-tables::{label}: {exc}")
-        return "LOCK_FAILED", str(exc)
+        elapsed = time.perf_counter() - start
+        detail = f"{exc} (after {elapsed:.2f}s)"
+        print(f"::error title=truncate-tables::{label}: {detail}")
+        return "LOCK_FAILED", detail
 
     truncated = False
     try:
@@ -74,22 +80,29 @@ def truncate_with_lock(adapter, entry, label: str, config) -> tuple[str, str]:
         truncated = True
         adapter.restore_sequence_state(entry.name, seq_state)
         adapter.commit()
-        detail = f"lock acquired on attempt {attempts}, PK sequence preserved"
-        print(f"::notice title=truncate-tables::Truncated {label} ({detail})")
+        elapsed = time.perf_counter() - start
+        detail = (
+            f"{count} rows removed in {elapsed:.2f}s (lock acquired on attempt {attempts}); "
+            f"{adapter.describe_sequence_state(seq_state)}"
+        )
+        print(f"::notice title=truncate-tables::Truncated {label}: {detail}")
         return "TRUNCATED", detail
     except Exception as exc:  # noqa: BLE001 - surfaced via status, not re-raised
         adapter.rollback()
+        elapsed = time.perf_counter() - start
         if truncated:
             # MySQL's TRUNCATE is DDL and already committed - the sequence
             # restore failing afterwards needs manual follow-up, it can't be
             # rolled back.
+            detail = f"{exc} (after {elapsed:.2f}s)"
             print(
                 f"::error title=truncate-tables::{label}: truncated but failed to restore "
-                f"PK sequence: {exc}"
+                f"PK sequence: {detail}"
             )
-            return "TRUNCATED_SEQUENCE_RESTORE_FAILED", str(exc)
-        print(f"::error title=truncate-tables::{label}: failed before truncation: {exc}")
-        return "ERROR", str(exc)
+            return "TRUNCATED_SEQUENCE_RESTORE_FAILED", detail
+        detail = f"{exc} (after {elapsed:.2f}s)"
+        print(f"::error title=truncate-tables::{label}: failed before truncation: {detail}")
+        return "ERROR", detail
     finally:
         adapter.unlock()
 
@@ -160,7 +173,7 @@ def main() -> int:
                 results.append((label, "DRY_RUN", f"{count} rows"))
                 continue
 
-            status, detail = truncate_with_lock(adapter, entry, label, config)
+            status, detail = truncate_with_lock(adapter, entry, label, count, config)
             results.append((label, status, detail))
         finally:
             adapter.close()
