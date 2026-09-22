@@ -1,0 +1,50 @@
+name: "Truncate tables (scaffold)"
+description: "Truncates an explicit, reviewed allowlist of DB tables (mysql/postgres) with FK/trigger safety checks and dry-run support. Emits a status/summary output for the caller workflow to post to Slack. Scaffold only - see README before enabling against prod."
+inputs:
+  db_engine:
+    description: "Database engine: mysql or postgres"
+    required: true
+  db_host:
+    description: "Database host"
+    required: true
+  db_port:
+    description: "Database port"
+    required: true
+  db_username:
+    description: "Database username (pass via secrets in the caller workflow)"
+    required: true
+  db_password:
+    description: "Database password (pass via secrets in the caller workflow)"
+    required: true
+  config_path:
+    description: "Path (in the caller repo checkout) to the YAML allowlist config"
+    required: true
+  dry_run:
+    description: "When 'true' (default), logs what would be truncated without executing anything"
+    required: false
+    default: "true"
+outputs:
+  status:
+    description: "'success' or 'failure' - use this to pick the Slack message color in the caller workflow"
+    value: ${{ steps.truncate.outputs.status }}
+  summary:
+    description: "Per-table result summary (one line per table: status and row count / block reason)"
+    value: ${{ steps.truncate.outputs.summary }}
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - run: pip install -r ${{ github.action_path }}/requirements.txt
+      shell: bash
+    - id: truncate
+      run: python ${{ github.action_path }}/scripts/truncate.py --config "${{ inputs.config_path }}"
+      shell: bash
+      env:
+        DB_ENGINE: ${{ inputs.db_engine }}
+        DB_HOST: ${{ inputs.db_host }}
+        DB_PORT: ${{ inputs.db_port }}
+        DB_USERNAME: ${{ inputs.db_username }}
+        DB_PASSWORD: ${{ inputs.db_password }}
+        DRY_RUN: ${{ inputs.dry_run }}
